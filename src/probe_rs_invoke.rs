@@ -23,6 +23,10 @@ pub mod probe_rs_integration {
         let p = debug_probe_info.open()?;
         let mut s = p.attach(target_chip, Permissions::default())?;
         probe_rs::flashing::download_file(&mut s, file_path, file_format)?;
+        for c in s.list_cores() {
+            let mut c_u = s.core(c.0)?;
+            c_u.reset()?;
+        }
         Ok(())
     }
 
