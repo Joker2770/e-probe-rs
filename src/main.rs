@@ -24,12 +24,12 @@ fn main() -> eframe::Result {
 struct MyApp {
     probes_list: Vec<DebugProbeInfo>,
     cnt_4_update_probes_list: u16,
-    probe_selected: u16,
+    probe_selected_idx: usize,
     chips_list: Vec<String>,
     cnt_4_update_chips_list: u16,
     target_chip_name: String,
     file_format_selected: flashing::Format,
-    dowmload_rst_info: String,
+    dowmload_rst_info: Option<String>,
     file_dialog: FileDialog,
     selected_file: Option<PathBuf>,
 }
@@ -45,12 +45,12 @@ impl eframe::App for MyApp {
                         self.probes_list = probe_rs_integration::get_probes_list();
                     }
                     egui::ComboBox::from_label("probe")
-                        .selected_text(format!("{}", self.probe_selected))
+                        .selected_text(format!("{}", self.probe_selected_idx))
                         .show_ui(ui, |ui| {
                             for (i, p) in self.probes_list.iter().enumerate() {
                                 ui.selectable_value(
-                                    &mut self.probe_selected,
-                                    i as u16,
+                                    &mut self.probe_selected_idx,
+                                    i,
                                     format!(
                                         "{} (pid: {} vid: {})",
                                         p.identifier.as_str(),
@@ -111,23 +111,23 @@ impl eframe::App for MyApp {
                         );
                     });
                 if ui.button("try to download").clicked() {
-                    if 0 < self.probes_list.len() {
+                    if self.probe_selected_idx < self.probes_list.len() {
                         let rst = probe_rs_integration::try_to_download(
-                            &self.probes_list[self.probe_selected as usize],
+                            &self.probes_list[self.probe_selected_idx as usize],
                             &self.target_chip_name,
                             &self.selected_file.clone().unwrap_or_default(),
                             self.file_format_selected.clone(),
                         );
                         match rst {
-                            Ok(_) => self.dowmload_rst_info = "Download complete!".to_owned(),
+                            Ok(_) => self.dowmload_rst_info = Some("Download complete!".to_owned()),
                             Err(e) => {
                                 let tmp = format!("{:?}", e).clone();
-                                self.dowmload_rst_info = tmp
+                                self.dowmload_rst_info = Some(tmp);
                             }
                         };
                     }
                 }
-                ui.label(&self.dowmload_rst_info);
+                ui.label(self.dowmload_rst_info.clone().unwrap_or_default());
             });
         });
     }
