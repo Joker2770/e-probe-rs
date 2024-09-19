@@ -106,6 +106,7 @@ impl eframe::App for MyApp {
                             &self.probes_list[self.probe_selected as usize],
                             &self.target_chip_name,
                             path.into(),
+                            self.file_format_selected.clone(),
                         );
                         match rst {
                             Ok(_) => self.dowmload_rst_info = "Download complete!".to_owned(),

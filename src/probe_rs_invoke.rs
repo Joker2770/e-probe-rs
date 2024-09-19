@@ -19,10 +19,11 @@ pub mod probe_rs_integration {
         debug_probe_info: &DebugProbeInfo,
         target_chip: &str,
         file_path: PathBuf,
+        file_format: flashing::Format,
     ) -> Result<(), Box<dyn Error>> {
         let p = debug_probe_info.open()?;
         let mut s = p.attach_under_reset(target_chip, Permissions::default())?;
-        let _ = probe_rs::flashing::download_file(&mut s, file_path, Format::Elf);
+        probe_rs::flashing::download_file(&mut s, file_path, file_format)?;
         Ok(())
     }
 
