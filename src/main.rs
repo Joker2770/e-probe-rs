@@ -22,8 +22,10 @@ fn main() -> eframe::Result {
 #[derive(Default)]
 struct MyApp {
     probes_list: Vec<DebugProbeInfo>,
-    probes_list_update_cnt: u16,
+    cnt_4_update_probes_list: u16,
     probe_selected: u16,
+    chips_list: Vec<String>,
+    cnt_4_update_chips_list: u16,
     target_chip_name: String,
     file_format_selected: flashing::Format,
     picked_path: Option<String>,
@@ -35,9 +37,9 @@ impl eframe::App for MyApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    self.probes_list_update_cnt+=1;
-                    if 60 <= self.probes_list_update_cnt {
-                        self.probes_list_update_cnt = 0;
+                    self.cnt_4_update_probes_list += 1;
+                    if 60 <= self.cnt_4_update_probes_list {
+                        self.cnt_4_update_probes_list = 0;
                         self.probes_list = probe_rs_integration::get_probes_list();
                     }
                     egui::ComboBox::from_label("probe")
@@ -60,10 +62,15 @@ impl eframe::App for MyApp {
                         self.probes_list = probe_rs_integration::get_probes_list();
                     }
                 });
+                self.cnt_4_update_chips_list += 1;
+                if 100 <= self.cnt_4_update_chips_list {
+                    self.cnt_4_update_chips_list = 0;
+                    self.chips_list = probe_rs_integration::get_availabe_chips();
+                }
                 egui::ComboBox::from_label("target")
                     .selected_text(format!("{}", self.target_chip_name))
                     .show_ui(ui, |ui| {
-                        for t in probe_rs_integration::get_availabe_chips().iter() {
+                        for t in self.chips_list.iter() {
                             ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
                         }
                     });

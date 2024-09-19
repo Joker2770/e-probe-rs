@@ -1,12 +1,11 @@
 pub mod probe_rs_integration {
     use probe_rs::{
-        config,
-        flashing,
+        config, flashing,
         probe::{list, DebugProbeInfo},
         Permissions,
     };
     use std::error::Error;
-    use std:: path::PathBuf;
+    use std::path::PathBuf;
 
     pub fn get_probes_list() -> Vec<DebugProbeInfo> {
         // Get a list of all available debug probes.
@@ -22,7 +21,7 @@ pub mod probe_rs_integration {
         file_format: flashing::Format,
     ) -> Result<(), Box<dyn Error>> {
         let p = debug_probe_info.open()?;
-        let mut s = p.attach_under_reset(target_chip, Permissions::default())?;
+        let mut s = p.attach(target_chip, Permissions::default())?;
         probe_rs::flashing::download_file(&mut s, file_path, file_format)?;
         Ok(())
     }
