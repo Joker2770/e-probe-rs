@@ -1,7 +1,7 @@
 pub mod probe_rs_integration {
     use probe_rs::{
         config,
-        flashing::Format,
+        flashing,
         probe::{list, DebugProbeInfo},
         Permissions,
     };
