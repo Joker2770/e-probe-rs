@@ -2,10 +2,11 @@
 
 mod probe_rs_invoke;
 
+use eframe::egui;
+use egui_file_dialog::FileDialog;
 use probe_rs::{flashing, probe::DebugProbeInfo};
 use probe_rs_invoke::probe_rs_integration;
-
-use eframe::egui;
+use std::path::PathBuf;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -28,8 +29,9 @@ struct MyApp {
     cnt_4_update_chips_list: u16,
     target_chip_name: String,
     file_format_selected: flashing::Format,
-    picked_path: Option<String>,
     dowmload_rst_info: String,
+    file_dialog: FileDialog,
+    selected_file: Option<PathBuf>,
 }
 
 impl eframe::App for MyApp {
@@ -74,18 +76,19 @@ impl eframe::App for MyApp {
                             ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
                         }
                     });
-                if ui.button("Open file…").clicked() {
-                    if let Some(path) = rfd::FileDialog::new().pick_file() {
-                        self.picked_path = Some(path.display().to_string());
-                    }
+                if ui.button("Select file").clicked() {
+                    // Open the file dialog to select a file.
+                    self.file_dialog.select_file();
                 }
-                let mut path = &"".to_owned();
-                if let Some(picked_path) = &self.picked_path {
-                    path = picked_path;
-                    ui.horizontal(|ui| {
-                        ui.label("Picked file:");
-                        ui.monospace(picked_path);
-                    });
+
+                ui.label(format!("Selected file: {:?}", self.selected_file));
+
+                // Update the dialog
+                self.file_dialog.update(ctx);
+
+                // Check if the user selected a file.
+                if let Some(path) = self.file_dialog.take_selected() {
+                    self.selected_file = Some(path);
                 }
 
                 egui::ComboBox::from_label("File Format")
@@ -112,7 +115,7 @@ impl eframe::App for MyApp {
                         let rst = probe_rs_integration::try_to_download(
                             &self.probes_list[self.probe_selected as usize],
                             &self.target_chip_name,
-                            path.into(),
+                            &self.selected_file.clone().unwrap_or_default(),
                             self.file_format_selected.clone(),
                         );
                         match rst {

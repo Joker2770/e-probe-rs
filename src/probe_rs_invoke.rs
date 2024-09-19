@@ -17,7 +17,7 @@ pub mod probe_rs_integration {
     pub fn try_to_download(
         debug_probe_info: &DebugProbeInfo,
         target_chip: &str,
-        file_path: PathBuf,
+        file_path: &PathBuf,
         file_format: flashing::Format,
     ) -> Result<(), Box<dyn Error>> {
         let p = debug_probe_info.open()?;
