@@ -1,16 +1,17 @@
 pub mod m_flash_opts {
-    use crate::probe_rs_invoke::probe_rs_integration;
+    use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use eframe::egui;
     use egui_file_dialog::FileDialog;
     use probe_rs::{flashing, probe::DebugProbeInfo};
-    use std::path::PathBuf;
+    use std::
+        path::PathBuf;
 
     #[derive(Default)]
     pub struct FlashProgram {
         probes_list: Vec<DebugProbeInfo>,
         cnt_4_update_probes_list: u16,
         probe_selected_idx: usize,
-        chips_list: Vec<String>,
+        probe_rs_handler: ProbeRsHandler,
         cnt_4_update_chips_list: u16,
         target_chip_name: String,
         file_format_selected: flashing::Format,
@@ -26,7 +27,7 @@ pub mod m_flash_opts {
                     self.cnt_4_update_probes_list += 1;
                     if 60 <= self.cnt_4_update_probes_list {
                         self.cnt_4_update_probes_list = 0;
-                        self.probes_list = probe_rs_integration::get_probes_list();
+                        self.probes_list = ProbeRsHandler::get_probes_list();
                     }
                     egui::ComboBox::from_label("probe")
                         .selected_text(format!("{}", self.probe_selected_idx))
@@ -45,18 +46,20 @@ pub mod m_flash_opts {
                             }
                         });
                     if ui.button("refresh").clicked() {
-                        self.probes_list = probe_rs_integration::get_probes_list();
+                        self.probes_list = ProbeRsHandler::get_probes_list();
                     }
                 });
                 self.cnt_4_update_chips_list += 1;
                 if 100 <= self.cnt_4_update_chips_list {
                     self.cnt_4_update_chips_list = 0;
-                    self.chips_list = probe_rs_integration::get_availabe_chips();
+                    ProbeRsHandler::get_availabe_chips(
+                        &mut self.probe_rs_handler,
+                    );
                 }
                 egui::ComboBox::from_label("target")
                     .selected_text(format!("{}", self.target_chip_name))
                     .show_ui(ui, |ui| {
-                        for t in self.chips_list.iter() {
+                        for t in self.probe_rs_handler.chips_list.iter() {
                             ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
                         }
                     });
@@ -96,19 +99,33 @@ pub mod m_flash_opts {
                     });
                 if ui.button("try to download").clicked() {
                     if self.probe_selected_idx < self.probes_list.len() {
-                        let rst = probe_rs_integration::try_to_download(
-                            &self.probes_list[self.probe_selected_idx as usize],
+                        match ProbeRsHandler::attach(
+                            &self.probes_list[self.probe_selected_idx],
                             &self.target_chip_name,
-                            &self.selected_file.clone().unwrap_or_default(),
-                            self.file_format_selected.clone(),
-                        );
-                        match rst {
-                            Ok(_) => self.dowmload_rst_info = Some("Download complete!".to_owned()),
+                        ) {
+                            Ok(s) => {
+                                let mut session = s;
+                                let rst = ProbeRsHandler::try_to_download(
+                                    &mut session,
+                                    &self.selected_file.clone().unwrap_or_default(),
+                                    self.file_format_selected.clone(),
+                                );
+                                match rst {
+                                    Ok(_) => {
+                                        self.dowmload_rst_info =
+                                            Some("Download complete!".to_owned())
+                                    }
+                                    Err(e) => {
+                                        let tmp = format!("{:?}", e).clone();
+                                        self.dowmload_rst_info = Some(tmp);
+                                    }
+                                };
+                            }
                             Err(e) => {
                                 let tmp = format!("{:?}", e).clone();
                                 self.dowmload_rst_info = Some(tmp);
                             }
-                        };
+                        }
                     }
                 }
                 ui.label(self.dowmload_rst_info.clone().unwrap_or_default());

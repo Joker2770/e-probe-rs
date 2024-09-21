@@ -2,42 +2,79 @@ pub mod probe_rs_integration {
     use probe_rs::{
         config, flashing,
         probe::{list, DebugProbeInfo},
-        Permissions,
+        Permissions, Session,rtt::Rtt,
     };
     use std::error::Error;
     use std::path::PathBuf;
+    use std::sync::{Arc, Mutex};
 
-    pub fn get_probes_list() -> Vec<DebugProbeInfo> {
-        // Get a list of all available debug probes.
-        let lister = list::Lister::new();
-        let probes = lister.list_all();
-        probes
+    #[derive(Default)]
+    pub struct ProbeRsHandler {
+        pub chips_list: Vec<String>,
     }
 
-    pub fn try_to_download(
-        debug_probe_info: &DebugProbeInfo,
-        target_chip: &str,
-        file_path: &PathBuf,
-        file_format: flashing::Format,
-    ) -> Result<(), Box<dyn Error>> {
-        let p = debug_probe_info.open()?;
-        let mut s = p.attach(target_chip, Permissions::default())?;
-        probe_rs::flashing::download_file(&mut s, file_path, file_format)?;
-        for c in s.list_cores() {
-            let mut c_u = s.core(c.0)?;
-            c_u.reset()?;
+    impl ProbeRsHandler {
+        pub fn get_probes_list() -> Vec<DebugProbeInfo> {
+            // Get a list of all available debug probes.
+            let lister = list::Lister::new();
+            let probes = lister.list_all();
+            probes
         }
-        Ok(())
-    }
 
-    pub fn get_availabe_chips() -> Vec<String> {
-        let mut vec = Vec::new();
-        for family in config::families() {
-            for variant in family.variants() {
-                let v = variant.name.clone();
-                vec.push(v);
+        pub fn attach(
+            debug_probe_info: &DebugProbeInfo,
+            target_chip: &str,
+        ) -> Result<Session, Box<dyn Error>> {
+            let p = debug_probe_info.open()?;
+            let s = p.attach(target_chip, Permissions::default())?;
+            Ok(s)
+        }
+
+        pub fn try_to_download(
+            session: &mut Session,
+            file_path: &PathBuf,
+            file_format: flashing::Format,
+        ) -> Result<(), Box<dyn Error>> {
+            probe_rs::flashing::download_file(session, file_path, file_format)?;
+            for c in session.list_cores() {
+                let mut c_u = session.core(c.0)?;
+                c_u.reset()?;
             }
+            Ok(())
         }
-        vec
+
+        pub fn get_availabe_chips(&mut self) -> &Vec<String> {
+            if 0 >= self.chips_list.len() {
+                for family in config::families() {
+                    for variant in family.variants() {
+                        let v = variant.name.clone();
+                        self.chips_list.push(v);
+                    }
+                }
+            }
+            &self.chips_list
+        }
+
+        pub fn rtt_read_from_channel(
+            session: &mut Session,
+            buf: &mut [u8],
+            core_idx: usize,
+            channel_number: usize,
+        ) -> Result<usize, Box<dyn Error>> {
+            let memory_map = session.target().memory_map.clone();
+            // Select a core.
+            let mut core = session.core(core_idx)?;
+
+            // Attach to RTT
+            let mut rtt = Rtt::attach(&mut core, &memory_map)?;
+
+            // Read from a channel
+            let mut count = 0;
+            if let Some(input) = rtt.up_channels().take(channel_number) {
+                count = input.read(&mut core, &mut buf[..])?;
+                // println!("Read data: {:?}", &buf[..count]);
+            }
+            Ok(count)
+        }
     }
 }

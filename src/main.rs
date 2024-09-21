@@ -1,12 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-mod probe_rs_invoke;
 mod flash;
 mod probe_opts;
+mod probe_rs_invoke;
+mod rtt;
 
 use eframe::egui;
 use flash::m_flash_opts::FlashProgram;
 use probe_opts::m_probe_opts::ProbeOperations;
+use rtt::m_rtt_opts::RTTIO;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -23,23 +25,28 @@ fn main() -> eframe::Result {
 #[derive(Default)]
 struct MyApp {
     stack_window: ProbeOperations,
-    flash_opt: FlashProgram,
+    flash_opts: FlashProgram,
+    rttio_opts: RTTIO,
 }
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.selectable_value(&mut self.stack_window, ProbeOperations::FlashProgram, "flash");
+                ui.selectable_value(
+                    &mut self.stack_window,
+                    ProbeOperations::FlashProgram,
+                    "flash",
+                );
                 ui.selectable_value(&mut self.stack_window, ProbeOperations::RTTIO, "rtt");
             });
             ui.separator();
             match self.stack_window {
                 ProbeOperations::FlashProgram => {
-                    self.flash_opt.ui(ui);
+                    self.flash_opts.ui(ui);
                 }
                 ProbeOperations::RTTIO => {
-
+                    self.rttio_opts.ui(ui);
                 }
             }
         });
