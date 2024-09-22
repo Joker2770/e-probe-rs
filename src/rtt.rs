@@ -1,5 +1,6 @@
 pub mod m_rtt_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
+    use chrono::{DateTime, Local};
     use eframe::egui;
     use probe_rs::probe::DebugProbeInfo;
 
@@ -113,7 +114,14 @@ pub mod m_rtt_opts {
                     .stick_to_bottom(true)
                     .show_rows(ui, row_height, self.n_items, |ui, row_range| {
                         for row in row_range {
-                            let text = format!("{}: {}", row + 1, String::from_utf8_lossy(&buf));
+                            let local_date_time = Local::now();
+                            let ymdhms = local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
+                            let text = format!(
+                                "{}: {} {}",
+                                row + 1,
+                                ymdhms,
+                                String::from_utf8_lossy(&buf)
+                            );
                             ui.label(text);
                         }
                     });
