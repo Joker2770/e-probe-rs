@@ -28,7 +28,7 @@ pub mod probe_rs_integration {
             &self.probes_list
         }
 
-        pub fn get_session(
+        pub fn attach_target(
             &mut self,
             probe_idx: usize,
             target_chip: &str,
@@ -37,6 +37,21 @@ pub mod probe_rs_integration {
                 if probe_idx < self.probes_list.len() {
                     let p = self.probes_list[probe_idx].open()?;
                     let s = p.attach(target_chip, Permissions::default())?;
+                    self.session = Some(s);
+                }
+            }
+            Ok(&self.session)
+        }
+
+        pub fn attach_target_under_reset(
+            &mut self,
+            probe_idx: usize,
+            target_chip: &str,
+        ) -> Result<&Option<Session>, Box<dyn Error>> {
+            if let None = self.session {
+                if probe_idx < self.probes_list.len() {
+                    let p = self.probes_list[probe_idx].open()?;
+                    let s = p.attach_under_reset(target_chip, Permissions::default())?;
                     self.session = Some(s);
                 }
             }

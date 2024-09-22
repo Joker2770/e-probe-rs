@@ -2,7 +2,7 @@ pub mod m_flash_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use eframe::egui;
     use egui_file_dialog::FileDialog;
-    use probe_rs::{flashing, probe::DebugProbeInfo};
+    use probe_rs::flashing;
     use std::{borrow::Borrow, path::PathBuf};
 
     #[derive(Default)]
@@ -46,13 +46,44 @@ pub mod m_flash_opts {
                 if 0 >= self.probe_rs_handler.chips_list.len() {
                     ProbeRsHandler::get_availabe_chips(&mut self.probe_rs_handler);
                 }
-                egui::ComboBox::from_label("target")
-                    .selected_text(format!("{}", self.target_chip_name))
-                    .show_ui(ui, |ui| {
-                        for t in self.probe_rs_handler.chips_list.iter() {
-                            ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
+
+                ui.horizontal(|ui| {
+                    egui::ComboBox::from_label("target")
+                        .selected_text(format!("{}", self.target_chip_name))
+                        .show_ui(ui, |ui| {
+                            for t in self.probe_rs_handler.chips_list.iter() {
+                                ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
+                            }
+                        });
+
+                    if ui.button("attach").clicked() {
+                        match ProbeRsHandler::attach_target(
+                            &mut self.probe_rs_handler,
+                            self.probe_selected_idx,
+                            &self.target_chip_name,
+                        ) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                let tmp = format!("{:#?}", e).clone();
+                                self.dowmload_rst_info = Some(tmp)
+                            }
                         }
-                    });
+                    }
+                    if ui.button("attach under reset").clicked() {
+                        match ProbeRsHandler::attach_target_under_reset(
+                            &mut self.probe_rs_handler,
+                            self.probe_selected_idx,
+                            &self.target_chip_name,
+                        ) {
+                            Ok(_) => {}
+                            Err(e) => {
+                                let tmp = format!("{:#?}", e).clone();
+                                self.dowmload_rst_info = Some(tmp)
+                            }
+                        }
+                    }
+                });
+
                 if ui.button("Select file").clicked() {
                     // Open the file dialog to select a file.
                     self.file_dialog.select_file();
@@ -107,7 +138,7 @@ pub mod m_flash_opts {
                                 }
                             };
                         } else {
-                            match ProbeRsHandler::get_session(
+                            match ProbeRsHandler::attach_target_under_reset(
                                 &mut self.probe_rs_handler,
                                 self.probe_selected_idx,
                                 &self.target_chip_name,
@@ -121,6 +152,7 @@ pub mod m_flash_opts {
                         }
                     }
                 }
+                ui.separator();
                 ui.label(self.dowmload_rst_info.clone().unwrap_or_default());
             });
         }

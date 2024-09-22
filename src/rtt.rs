@@ -1,8 +1,7 @@
 pub mod m_rtt_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
-    use chrono::{DateTime, Local};
+    use chrono::Local;
     use eframe::egui;
-    use probe_rs::probe::DebugProbeInfo;
 
     #[derive(Default)]
     pub struct RTTIO {
@@ -55,8 +54,16 @@ pub mod m_rtt_opts {
                             ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
                         }
                     });
-                if ui.button("attach target").clicked() {
-                    let _ = ProbeRsHandler::get_session(
+                if ui.button("attach").clicked() {
+                    let _ = ProbeRsHandler::attach_target(
+                        &mut self.probe_rs_handler,
+                        self.probe_selected_idx,
+                        &self.target_chip_name,
+                    );
+                    self.cur_target_core_num = ProbeRsHandler::get_core_num(&self.probe_rs_handler);
+                }
+                if ui.button("attach under reset").clicked() {
+                    let _ = ProbeRsHandler::attach_target_under_reset(
                         &mut self.probe_rs_handler,
                         self.probe_selected_idx,
                         &self.target_chip_name,
@@ -66,7 +73,7 @@ pub mod m_rtt_opts {
             });
 
             ui.horizontal(|ui| {
-                egui::ComboBox::from_label("cores list")
+                egui::ComboBox::from_label("core")
                     .selected_text(format!("{}", self.cur_target_core_idx))
                     .show_ui(ui, |ui| {
                         for c in 0..self.cur_target_core_num {
@@ -85,7 +92,7 @@ pub mod m_rtt_opts {
             });
 
             ui.horizontal(|ui| {
-                egui::ComboBox::from_label("channels list")
+                egui::ComboBox::from_label("channel")
                     .selected_text(format!("{}", self.cur_target_channel_idx))
                     .show_ui(ui, |ui| {
                         for c in 0..self.cur_target_channel_num {
