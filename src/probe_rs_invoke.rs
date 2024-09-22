@@ -11,30 +11,34 @@ pub mod probe_rs_integration {
 
     #[derive(Default)]
     pub struct ProbeRsHandler {
+        pub probes_list: Vec<DebugProbeInfo>,
         pub chips_list: Vec<String>,
         pub up_chs_size: usize,
         pub cur_ch: Option<UpChannel>,
         pub session: Option<Session>,
         pub rtt: Option<Rtt>,
+        pub target_cores_num: usize,
     }
 
     impl ProbeRsHandler {
-        pub fn get_probes_list() -> Vec<DebugProbeInfo> {
+        pub fn get_probes_list(&mut self) -> &Vec<DebugProbeInfo> {
             // Get a list of all available debug probes.
             let lister = list::Lister::new();
-            let probes = lister.list_all();
-            probes
+            self.probes_list = lister.list_all();
+            &self.probes_list
         }
 
         pub fn get_session(
             &mut self,
-            debug_probe_info: &DebugProbeInfo,
+            probe_idx: usize,
             target_chip: &str,
         ) -> Result<&Option<Session>, Box<dyn Error>> {
             if let None = self.session {
-                let p = debug_probe_info.open()?;
-                let s = p.attach(target_chip, Permissions::default())?;
-                self.session = Some(s);
+                if probe_idx < self.probes_list.len() {
+                    let p = self.probes_list[probe_idx].open()?;
+                    let s = p.attach(target_chip, Permissions::default())?;
+                    self.session = Some(s);
+                }
             }
             Ok(&self.session)
         }
@@ -83,9 +87,11 @@ pub mod probe_rs_integration {
         pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core>, Box<dyn Error>> {
             let mut opt_core = None;
             if let Some(s) = self.session.borrow_mut() {
-                // Select a core.
-                let core = s.core(core_idx)?;
-                opt_core = Some(core);
+                if core_idx < self.target_cores_num {
+                    // Select a core.
+                    let core = s.core(core_idx)?;
+                    opt_core = Some(core);
+                }
             }
 
             Ok(opt_core)
@@ -93,13 +99,15 @@ pub mod probe_rs_integration {
 
         pub fn get_rtt(&mut self, core_idx: usize) -> Result<&Option<Rtt>, Box<dyn Error>> {
             if let Some(s) = self.session.borrow_mut() {
-                let memory_map = s.target().memory_map.clone();
-                // Select a core.
-                let mut core = s.core(core_idx)?;
+                if core_idx < self.target_cores_num {
+                    let memory_map = s.target().memory_map.clone();
+                    // Select a core.
+                    let mut core = s.core(core_idx)?;
 
-                // Attach to RTT
-                let rtt = Rtt::attach(&mut core, &memory_map)?;
-                self.rtt = Some(rtt);
+                    // Attach to RTT
+                    let rtt = Rtt::attach(&mut core, &memory_map)?;
+                    self.rtt = Some(rtt);
+                }
             }
             Ok(&self.rtt)
         }
@@ -114,8 +122,10 @@ pub mod probe_rs_integration {
 
         pub fn get_one_up_ch(&mut self, ch_number: usize) -> &Option<UpChannel> {
             if let Some(r) = self.rtt.borrow_mut() {
-                let up_chs = r.up_channels();
-                self.cur_ch = up_chs.take(ch_number);
+                if ch_number < self.up_chs_size {
+                    let up_chs = r.up_channels();
+                    self.cur_ch = up_chs.take(ch_number);
+                }
             }
             &self.cur_ch
         }
@@ -127,13 +137,15 @@ pub mod probe_rs_integration {
         ) -> Result<usize, Box<dyn Error>> {
             let mut count = 0;
             if let Some(s) = self.session.borrow_mut() {
-                // Select a core.
-                let mut core = s.core(core_idx)?;
-                // Read from a channel
-                if let Some(up_ch) = &self.cur_ch {
-                    count = up_ch.read(&mut core, &mut buf[..])?;
+                if core_idx < self.target_cores_num {
+                    // Select a core.
+                    let mut core = s.core(core_idx)?;
+                    // Read from a channel
+                    if let Some(up_ch) = &self.cur_ch {
+                        count = up_ch.read(&mut core, &mut buf[..])?;
+                    }
+                    // println!("Read data: {:?}", &buf[..count]);
                 }
-                // println!("Read data: {:?}", &buf[..count]);
             }
             Ok(count)
         }
