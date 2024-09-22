@@ -3,8 +3,7 @@ pub mod m_flash_opts {
     use eframe::egui;
     use egui_file_dialog::FileDialog;
     use probe_rs::{flashing, probe::DebugProbeInfo};
-    use std::
-        path::PathBuf;
+    use std::{borrow::Borrow, path::PathBuf};
 
     #[derive(Default)]
     pub struct FlashProgram {
@@ -52,9 +51,7 @@ pub mod m_flash_opts {
                 self.cnt_4_update_chips_list += 1;
                 if 100 <= self.cnt_4_update_chips_list {
                     self.cnt_4_update_chips_list = 0;
-                    ProbeRsHandler::get_availabe_chips(
-                        &mut self.probe_rs_handler,
-                    );
+                    ProbeRsHandler::get_availabe_chips(&mut self.probe_rs_handler);
                 }
                 egui::ComboBox::from_label("target")
                     .selected_text(format!("{}", self.target_chip_name))
@@ -99,31 +96,34 @@ pub mod m_flash_opts {
                     });
                 if ui.button("try to download").clicked() {
                     if self.probe_selected_idx < self.probes_list.len() {
-                        match ProbeRsHandler::attach(
-                            &self.probes_list[self.probe_selected_idx],
-                            &self.target_chip_name,
-                        ) {
-                            Ok(s) => {
-                                let mut session = s;
-                                let rst = ProbeRsHandler::try_to_download(
-                                    &mut session,
-                                    &self.selected_file.clone().unwrap_or_default(),
-                                    self.file_format_selected.clone(),
-                                );
-                                match rst {
-                                    Ok(_) => {
-                                        self.dowmload_rst_info =
-                                            Some("Download complete!".to_owned())
-                                    }
-                                    Err(e) => {
-                                        let tmp = format!("{:?}", e).clone();
-                                        self.dowmload_rst_info = Some(tmp);
-                                    }
-                                };
-                            }
-                            Err(e) => {
-                                let tmp = format!("{:?}", e).clone();
-                                self.dowmload_rst_info = Some(tmp);
+                        if let Some(_) = self.probe_rs_handler.session.borrow() {
+                            let rst = ProbeRsHandler::try_to_download(
+                                &mut self.probe_rs_handler,
+                                &self.selected_file.clone().unwrap_or_default(),
+                                self.file_format_selected.clone(),
+                            );
+                            match rst {
+                                Ok(_) => {
+                                    self.dowmload_rst_info = Some("Download complete!".to_owned());
+                                    let _ =
+                                        ProbeRsHandler::reset_all_cores(&mut self.probe_rs_handler);
+                                }
+                                Err(e) => {
+                                    let tmp = format!("{:?}", e).clone();
+                                    self.dowmload_rst_info = Some(tmp);
+                                }
+                            };
+                        } else {
+                            match ProbeRsHandler::get_session(
+                                &mut self.probe_rs_handler,
+                                &self.probes_list[self.probe_selected_idx],
+                                &self.target_chip_name,
+                            ) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    let tmp = format!("{:#?}", e).clone();
+                                    self.dowmload_rst_info = Some(tmp)
+                                }
                             }
                         }
                     }

@@ -2,15 +2,20 @@ pub mod probe_rs_integration {
     use probe_rs::{
         config, flashing,
         probe::{list, DebugProbeInfo},
-        Permissions, Session,rtt::Rtt,
+        rtt::{Rtt, UpChannel},
+        Core, Permissions, Session,
     };
-    use std::error::Error;
+    use std::borrow::BorrowMut;
     use std::path::PathBuf;
-    use std::sync::{Arc, Mutex};
+    use std::{borrow::Borrow, error::Error};
 
     #[derive(Default)]
     pub struct ProbeRsHandler {
         pub chips_list: Vec<String>,
+        pub up_chs_size: usize,
+        pub cur_ch: Option<UpChannel>,
+        pub session: Option<Session>,
+        pub rtt: Option<Rtt>,
     }
 
     impl ProbeRsHandler {
@@ -21,24 +26,36 @@ pub mod probe_rs_integration {
             probes
         }
 
-        pub fn attach(
+        pub fn get_session(
+            &mut self,
             debug_probe_info: &DebugProbeInfo,
             target_chip: &str,
-        ) -> Result<Session, Box<dyn Error>> {
-            let p = debug_probe_info.open()?;
-            let s = p.attach(target_chip, Permissions::default())?;
-            Ok(s)
+        ) -> Result<&Option<Session>, Box<dyn Error>> {
+            if let None = self.session {
+                let p = debug_probe_info.open()?;
+                let s = p.attach(target_chip, Permissions::default())?;
+                self.session = Some(s);
+            }
+            Ok(&self.session)
         }
 
         pub fn try_to_download(
-            session: &mut Session,
+            &mut self,
             file_path: &PathBuf,
             file_format: flashing::Format,
         ) -> Result<(), Box<dyn Error>> {
-            probe_rs::flashing::download_file(session, file_path, file_format)?;
-            for c in session.list_cores() {
-                let mut c_u = session.core(c.0)?;
-                c_u.reset()?;
+            if let Some(s) = self.session.borrow_mut() {
+                probe_rs::flashing::download_file(s, file_path, file_format)?;
+            }
+            Ok(())
+        }
+
+        pub fn reset_all_cores(&mut self) -> Result<(), Box<dyn Error>> {
+            if let Some(s) = self.session.borrow_mut() {
+                for c in s.list_cores() {
+                    let mut c_u = s.core(c.0)?;
+                    c_u.reset()?;
+                }
             }
             Ok(())
         }
@@ -55,23 +72,67 @@ pub mod probe_rs_integration {
             &self.chips_list
         }
 
+        pub fn get_core_num(&self) -> usize {
+            let mut num = 0;
+            if let Some(s) = self.session.borrow() {
+                num = s.list_cores().len();
+            }
+            num
+        }
+
+        pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core>, Box<dyn Error>> {
+            let mut opt_core = None;
+            if let Some(s) = self.session.borrow_mut() {
+                // Select a core.
+                let core = s.core(core_idx)?;
+                opt_core = Some(core);
+            }
+
+            Ok(opt_core)
+        }
+
+        pub fn get_rtt(&mut self, core_idx: usize) -> Result<&Option<Rtt>, Box<dyn Error>> {
+            if let Some(s) = self.session.borrow_mut() {
+                let memory_map = s.target().memory_map.clone();
+                // Select a core.
+                let mut core = s.core(core_idx)?;
+
+                // Attach to RTT
+                let rtt = Rtt::attach(&mut core, &memory_map)?;
+                self.rtt = Some(rtt);
+            }
+            Ok(&self.rtt)
+        }
+
+        pub fn get_up_channels_size(&mut self) -> usize {
+            if let Some(r) = self.rtt.borrow_mut() {
+                let up_chs = r.up_channels();
+                self.up_chs_size = up_chs.len();
+            }
+            self.up_chs_size
+        }
+
+        pub fn get_one_up_ch(&mut self, ch_number: usize) -> &Option<UpChannel> {
+            if let Some(r) = self.rtt.borrow_mut() {
+                let up_chs = r.up_channels();
+                self.cur_ch = up_chs.take(ch_number);
+            }
+            &self.cur_ch
+        }
+
         pub fn rtt_read_from_channel(
-            session: &mut Session,
+            &mut self,
             buf: &mut [u8],
             core_idx: usize,
-            channel_number: usize,
         ) -> Result<usize, Box<dyn Error>> {
-            let memory_map = session.target().memory_map.clone();
-            // Select a core.
-            let mut core = session.core(core_idx)?;
-
-            // Attach to RTT
-            let mut rtt = Rtt::attach(&mut core, &memory_map)?;
-
-            // Read from a channel
             let mut count = 0;
-            if let Some(input) = rtt.up_channels().take(channel_number) {
-                count = input.read(&mut core, &mut buf[..])?;
+            if let Some(s) = self.session.borrow_mut() {
+                // Select a core.
+                let mut core = s.core(core_idx)?;
+                // Read from a channel
+                if let Some(up_ch) = &self.cur_ch {
+                    count = up_ch.read(&mut core, &mut buf[..])?;
+                }
                 // println!("Read data: {:?}", &buf[..count]);
             }
             Ok(count)

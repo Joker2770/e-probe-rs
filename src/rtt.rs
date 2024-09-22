@@ -11,6 +11,12 @@ pub mod m_rtt_opts {
         probe_rs_handler: ProbeRsHandler,
         cnt_4_update_chips_list: u16,
         target_chip_name: String,
+        b_try_to_read: bool,
+        cur_target_core_num: usize,
+        cur_target_core_idx: usize,
+        cur_target_channel_num: usize,
+        cur_target_channel_idx: usize,
+        n_items: usize,
     }
 
     impl RTTIO {
@@ -53,8 +59,68 @@ pub mod m_rtt_opts {
                         ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
                     }
                 });
+            if ui.button("attach target").clicked() {
+                let _ = ProbeRsHandler::get_session(
+                    &mut self.probe_rs_handler,
+                    &self.probes_list[self.probe_selected_idx],
+                    &self.target_chip_name,
+                );
+                self.cur_target_core_num = ProbeRsHandler::get_core_num(&self.probe_rs_handler);
+            }
+
+            egui::ComboBox::from_label("core list")
+                .selected_text(format!("{}", self.cur_target_core_idx))
+                .show_ui(ui, |ui| {
+                    for c in 0..self.cur_target_core_num {
+                        ui.selectable_value(&mut self.cur_target_core_idx, c, format!("{}", c));
+                    }
+                });
+
+            if ui.button("attach rtt").clicked() {
+                let _ =
+                    ProbeRsHandler::get_rtt(&mut self.probe_rs_handler, self.cur_target_core_idx);
+                self.cur_target_channel_num =
+                    ProbeRsHandler::get_up_channels_size(&mut self.probe_rs_handler);
+            }
+
+            egui::ComboBox::from_label("channels list")
+                .selected_text(format!("{}", self.cur_target_channel_idx))
+                .show_ui(ui, |ui| {
+                    for c in 0..self.cur_target_channel_num {
+                        ui.selectable_value(&mut self.cur_target_channel_idx, c, format!("{}", c));
+                    }
+                });
+
+            if ui.button("get channels").clicked() {
+                ProbeRsHandler::get_one_up_ch(
+                    &mut self.probe_rs_handler,
+                    self.cur_target_channel_idx,
+                );
+            }
 
             ui.add_space(4.0);
+
+            ui.checkbox(&mut self.b_try_to_read, "try to read");
+            if self.b_try_to_read {
+                let mut buf = [0u8; 64];
+                let _ =
+                    ProbeRsHandler::rtt_read_from_channel(&mut self.probe_rs_handler, &mut buf, 0);
+                ui.add_space(4.0);
+                ui.separator();
+                let text_style = egui::TextStyle::Body;
+                let row_height = ui.text_style_height(&text_style);
+                egui::ScrollArea::vertical()
+                    .stick_to_bottom(true)
+                    .show_rows(ui, row_height, self.n_items, |ui, row_range| {
+                        for row in row_range {
+                            let text = format!("{}: {}", row + 1, String::from_utf8_lossy(&buf));
+                            ui.label(text);
+                        }
+                    });
+
+                self.n_items += 1;
+                ui.ctx().request_repaint();
+            }
         }
     }
 }
