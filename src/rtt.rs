@@ -104,30 +104,39 @@ pub mod m_rtt_opts {
             ui.checkbox(&mut self.b_try_to_read, "try to read");
             if self.b_try_to_read {
                 let mut buf = [0u8; 64];
-                let _ =
-                    ProbeRsHandler::rtt_read_from_channel(&mut self.probe_rs_handler, &mut buf, 0);
-                ui.add_space(4.0);
-                ui.separator();
-                let text_style = egui::TextStyle::Body;
-                let row_height = ui.text_style_height(&text_style);
-                egui::ScrollArea::vertical()
-                    .stick_to_bottom(true)
-                    .show_rows(ui, row_height, self.n_items, |ui, row_range| {
-                        for row in row_range {
-                            let local_date_time = Local::now();
-                            let ymdhms = local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
-                            let text = format!(
-                                "{}: {} {}",
-                                row + 1,
-                                ymdhms,
-                                String::from_utf8_lossy(&buf)
-                            );
-                            ui.label(text);
-                        }
-                    });
+                match ProbeRsHandler::rtt_read_from_channel(&mut self.probe_rs_handler, &mut buf, 0)
+                {
+                    Ok(s) => {
+                        if 0 < s {
+                            ui.add_space(4.0);
+                            ui.separator();
+                            let text_style = egui::TextStyle::Body;
+                            let row_height = ui.text_style_height(&text_style);
+                            egui::ScrollArea::vertical()
+                                .stick_to_bottom(true)
+                                .show_rows(ui, row_height, self.n_items, |ui, row_range| {
+                                    for row in row_range {
+                                        let local_date_time = Local::now();
+                                        let ymdhms =
+                                            local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
+                                        let text = format!(
+                                            "{}: {} {}",
+                                            row + 1,
+                                            ymdhms,
+                                            String::from_utf8_lossy(&buf)
+                                        );
+                                        ui.label(text);
+                                    }
+                                });
 
-                self.n_items += 1;
-                ui.ctx().request_repaint();
+                            self.n_items += 1;
+                            ui.ctx().request_repaint();
+                        }
+                    }
+                    Err(e) => {
+                        ui.label(format!("{:#?}", e));
+                    }
+                }
             }
         }
     }
