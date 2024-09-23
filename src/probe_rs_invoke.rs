@@ -2,7 +2,7 @@ pub mod probe_rs_integration {
     use probe_rs::{
         config, flashing,
         probe::{list, DebugProbeInfo},
-        rtt::{Rtt, UpChannel},
+        rtt::{Rtt, ScanRegion, UpChannel},
         Core, Permissions, Session,
     };
     use std::borrow::BorrowMut;
@@ -18,6 +18,7 @@ pub mod probe_rs_integration {
         pub session: Option<Session>,
         pub rtt: Option<Rtt>,
         pub target_cores_num: usize,
+        pub scan_region: ScanRegion,
     }
 
     impl ProbeRsHandler {
@@ -120,6 +121,25 @@ pub mod probe_rs_integration {
 
                     // Attach to RTT
                     let mut rtt = Rtt::attach(&mut core, &memory_map)?;
+                    self.up_chs_size = rtt.up_channels().len();
+                    self.rtt = Some(rtt);
+                }
+            }
+            Ok(&self.rtt)
+        }
+
+        pub fn attach_rtt_region(
+            &mut self,
+            core_idx: usize,
+        ) -> Result<&Option<Rtt>, Box<dyn Error>> {
+            if let Some(s) = self.session.borrow_mut() {
+                if core_idx < self.target_cores_num {
+                    let memory_map = s.target().memory_map.clone();
+                    // Select a core.
+                    let mut core = s.core(core_idx)?;
+
+                    // Attach to RTT
+                    let mut rtt = Rtt::attach_region(&mut core, &memory_map, &self.scan_region)?;
                     self.up_chs_size = rtt.up_channels().len();
                     self.rtt = Some(rtt);
                 }

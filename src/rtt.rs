@@ -90,20 +90,16 @@ pub mod m_rtt_opts {
                         }
                     });
 
-                let mut out_info = "".to_owned();
                 if ui.button("attach rtt").clicked() {
                     match ProbeRsHandler::attach_rtt(
                         &mut self.probe_rs_handler,
                         self.cur_target_core_idx,
                     ) {
                         Ok(_) => {}
-                        Err(e) => {
-                            out_info = format!("{:#?}", e);
-                        }
+                        Err(e) => {}
                     }
                     ProbeRsHandler::get_up_channels_size(&mut self.probe_rs_handler);
                 }
-                ui.label(out_info);
             });
 
             ui.horizontal(|ui| {
