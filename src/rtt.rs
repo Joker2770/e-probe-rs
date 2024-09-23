@@ -9,9 +9,7 @@ pub mod m_rtt_opts {
         probe_rs_handler: ProbeRsHandler,
         target_chip_name: String,
         b_try_to_read: bool,
-        cur_target_core_num: usize,
         cur_target_core_idx: usize,
-        cur_target_channel_num: usize,
         cur_target_channel_idx: usize,
         n_items: usize,
     }
@@ -60,7 +58,7 @@ pub mod m_rtt_opts {
                         self.probe_selected_idx,
                         &self.target_chip_name,
                     );
-                    self.cur_target_core_num = ProbeRsHandler::get_core_num(&self.probe_rs_handler);
+                    ProbeRsHandler::get_core_num(&mut self.probe_rs_handler);
                 }
                 if ui.button("attach under reset").clicked() {
                     let _ = ProbeRsHandler::attach_target_under_reset(
@@ -68,7 +66,18 @@ pub mod m_rtt_opts {
                         self.probe_selected_idx,
                         &self.target_chip_name,
                     );
-                    self.cur_target_core_num = ProbeRsHandler::get_core_num(&self.probe_rs_handler);
+                    ProbeRsHandler::get_core_num(&mut self.probe_rs_handler);
+                }
+                if ui.button("reset all").clicked() {
+                    match ProbeRsHandler::reset_all_cores(&mut self.probe_rs_handler) {
+                        Ok(_) => {
+                            self.cur_target_core_idx = 0;
+                            self.cur_target_channel_idx = 0;
+                            self.b_try_to_read = false;
+                            self.target_chip_name = "".to_owned();
+                        }
+                        Err(e) => {}
+                    }
                 }
             });
 
@@ -76,26 +85,32 @@ pub mod m_rtt_opts {
                 egui::ComboBox::from_label("core")
                     .selected_text(format!("{}", self.cur_target_core_idx))
                     .show_ui(ui, |ui| {
-                        for c in 0..self.cur_target_core_num {
+                        for c in 0..self.probe_rs_handler.target_cores_num {
                             ui.selectable_value(&mut self.cur_target_core_idx, c, format!("{}", c));
                         }
                     });
 
+                let mut out_info = "".to_owned();
                 if ui.button("attach rtt").clicked() {
-                    let _ = ProbeRsHandler::get_rtt(
+                    match ProbeRsHandler::attach_rtt(
                         &mut self.probe_rs_handler,
                         self.cur_target_core_idx,
-                    );
-                    self.cur_target_channel_num =
-                        ProbeRsHandler::get_up_channels_size(&mut self.probe_rs_handler);
+                    ) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            out_info = format!("{:#?}", e);
+                        }
+                    }
+                    ProbeRsHandler::get_up_channels_size(&mut self.probe_rs_handler);
                 }
+                ui.label(out_info);
             });
 
             ui.horizontal(|ui| {
                 egui::ComboBox::from_label("channel")
                     .selected_text(format!("{}", self.cur_target_channel_idx))
                     .show_ui(ui, |ui| {
-                        for c in 0..self.cur_target_channel_num {
+                        for c in 0..self.probe_rs_handler.up_chs_size {
                             ui.selectable_value(
                                 &mut self.cur_target_channel_idx,
                                 c,

@@ -91,12 +91,11 @@ pub mod probe_rs_integration {
             &self.chips_list
         }
 
-        pub fn get_core_num(&self) -> usize {
-            let mut num = 0;
+        pub fn get_core_num(&mut self) -> usize {
             if let Some(s) = self.session.borrow() {
-                num = s.list_cores().len();
+                self.target_cores_num = s.list_cores().len();
             }
-            num
+            self.target_cores_num
         }
 
         pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core>, Box<dyn Error>> {
@@ -112,7 +111,7 @@ pub mod probe_rs_integration {
             Ok(opt_core)
         }
 
-        pub fn get_rtt(&mut self, core_idx: usize) -> Result<&Option<Rtt>, Box<dyn Error>> {
+        pub fn attach_rtt(&mut self, core_idx: usize) -> Result<&Option<Rtt>, Box<dyn Error>> {
             if let Some(s) = self.session.borrow_mut() {
                 if core_idx < self.target_cores_num {
                     let memory_map = s.target().memory_map.clone();
@@ -120,7 +119,8 @@ pub mod probe_rs_integration {
                     let mut core = s.core(core_idx)?;
 
                     // Attach to RTT
-                    let rtt = Rtt::attach(&mut core, &memory_map)?;
+                    let mut rtt = Rtt::attach(&mut core, &memory_map)?;
+                    self.up_chs_size = rtt.up_channels().len();
                     self.rtt = Some(rtt);
                 }
             }
@@ -129,8 +129,7 @@ pub mod probe_rs_integration {
 
         pub fn get_up_channels_size(&mut self) -> usize {
             if let Some(r) = self.rtt.borrow_mut() {
-                let up_chs = r.up_channels();
-                self.up_chs_size = up_chs.len();
+                self.up_chs_size = r.up_channels().len();
             }
             self.up_chs_size
         }

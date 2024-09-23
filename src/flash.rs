@@ -62,7 +62,9 @@ pub mod m_flash_opts {
                             self.probe_selected_idx,
                             &self.target_chip_name,
                         ) {
-                            Ok(_) => {}
+                            Ok(_) => {
+                                self.dowmload_rst_info.take();
+                            }
                             Err(e) => {
                                 let tmp = format!("{:#?}", e).clone();
                                 self.dowmload_rst_info = Some(tmp)
@@ -75,7 +77,21 @@ pub mod m_flash_opts {
                             self.probe_selected_idx,
                             &self.target_chip_name,
                         ) {
-                            Ok(_) => {}
+                            Ok(_) => {
+                                self.dowmload_rst_info.take();
+                            }
+                            Err(e) => {
+                                let tmp = format!("{:#?}", e).clone();
+                                self.dowmload_rst_info = Some(tmp)
+                            }
+                        }
+                    }
+                    if ui.button("reset all").clicked() {
+                        match ProbeRsHandler::reset_all_cores(&mut self.probe_rs_handler) {
+                            Ok(_) => {
+                                self.target_chip_name = "".to_owned();
+                                self.dowmload_rst_info.take();
+                            }
                             Err(e) => {
                                 let tmp = format!("{:#?}", e).clone();
                                 self.dowmload_rst_info = Some(tmp)
