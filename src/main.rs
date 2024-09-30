@@ -1,14 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-mod flash;
+mod flash_opts;
 mod probe_opts;
 mod probe_rs_invoke;
-mod rtt;
+mod rtt_opts;
 
 use eframe::egui;
-use flash::m_flash_opts::FlashProgram;
+use flash_opts::m_flash_opts::FlashProgram;
 use probe_opts::m_probe_opts::ProbeOperations;
-use rtt::m_rtt_opts::RTTIO;
+use rtt_opts::m_rtt_opts::RTTIO;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
