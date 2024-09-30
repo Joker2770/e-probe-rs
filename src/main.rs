@@ -30,7 +30,7 @@ struct MyApp {
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(
@@ -43,10 +43,10 @@ impl eframe::App for MyApp {
             ui.separator();
             match self.stack_window {
                 ProbeOperations::FlashProgram => {
-                    self.flash_opts.ui(ui);
+                    self.flash_opts.ui(ctx, ui);
                 }
                 ProbeOperations::RTTIO => {
-                    self.rttio_opts.ui(ui);
+                    self.rttio_opts.ui(ctx, ui);
                 }
             }
         });

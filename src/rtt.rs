@@ -15,7 +15,7 @@ pub mod m_rtt_opts {
     }
 
     impl RTTIO {
-        pub fn ui(&mut self, ui: &mut egui::Ui) {
+        pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
             ui.horizontal(|ui| {
                 if 0 >= self.probe_rs_handler.probes_list.len() {
                     ProbeRsHandler::get_probes_list(&mut self.probe_rs_handler);

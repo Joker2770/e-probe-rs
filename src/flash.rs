@@ -1,7 +1,7 @@
 pub mod m_flash_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use eframe::egui;
-    use egui_file_dialog::FileDialog;
+    use egui_file::FileDialog;
     use probe_rs::flashing;
     use std::{borrow::Borrow, path::PathBuf};
 
@@ -12,12 +12,12 @@ pub mod m_flash_opts {
         target_chip_name: String,
         file_format_selected: flashing::Format,
         dowmload_rst_info: Option<String>,
-        file_dialog: FileDialog,
+        file_dialog: Option<FileDialog>,
         selected_file: Option<PathBuf>,
     }
 
     impl FlashProgram {
-        pub fn ui(&mut self, ui: &mut egui::Ui) {
+        pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut egui::Ui) {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     if 0 >= self.probe_rs_handler.probes_list.len() {
@@ -102,17 +102,24 @@ pub mod m_flash_opts {
 
                 if ui.button("Select file").clicked() {
                     // Open the file dialog to select a file.
-                    self.file_dialog.select_file();
+                    // let filter = Box::new({
+                    //     let ext_0 = Some(OsStr::new("hex"));
+                    //     let ext_1 = Some(OsStr::new("elf"));
+                    //     let ext_2= Some(OsStr::new("bin"));
+                    //     move |path: &Path| -> bool { path.extension() == ext_0 || path.extension() == ext_1 || path.extension() == ext_2 }
+                    // });
+                    let mut dialog = FileDialog::open_file(self.selected_file.clone());
+                    dialog.open();
+                    self.file_dialog = Some(dialog);
                 }
 
                 ui.label(format!("Selected file: {:?}", self.selected_file));
-
-                // Update the dialog
-                self.file_dialog.update(ui.ctx());
-
-                // Check if the user selected a file.
-                if let Some(path) = self.file_dialog.take_selected() {
-                    self.selected_file = Some(path);
+                if let Some(dialog) = &mut self.file_dialog {
+                    if dialog.show(ctx).selected() {
+                        if let Some(file) = dialog.path() {
+                            self.selected_file = Some(file.to_path_buf());
+                        }
+                    }
                 }
 
                 egui::ComboBox::from_label("File Format")
