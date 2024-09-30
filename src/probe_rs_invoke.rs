@@ -5,10 +5,59 @@ pub mod probe_rs_integration {
         rtt::{Rtt, ScanRegion, UpChannel},
         Core, Permissions, Session,
     };
-    use std::borrow::BorrowMut;
-    use std::path::PathBuf;
-    use std::{borrow::Borrow, error::Error};
+    use std::{
+        borrow::{Borrow, BorrowMut},
+        error::Error,
+        fs, io,
+        path::PathBuf,
+        time::{Duration, Instant},
+    };
 
+    fn get_rtt_symbol<T: io::Read + io::Seek>(file: &mut T) -> Option<u64> {
+        get_symbol(file, "_SEGGER_RTT")
+    }
+
+    fn get_symbol<T: io::Read + io::Seek>(file: &mut T, symbol: &str) -> Option<u64> {
+        let mut buffer = Vec::new();
+        if file.read_to_end(&mut buffer).is_ok() {
+            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
+                for sym in &binary.syms {
+                    if let Some(name) = binary.strtab.get_at(sym.st_name) {
+                        if name == symbol {
+                            return Some(sym.st_value);
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn attach_retry_loop(
+        core: &mut Core,
+        memory_map: &[probe_rs::config::MemoryRegion],
+        scan_region: &ScanRegion,
+        timeout: Duration,
+    ) -> Option<Rtt> {
+        let timeout: Duration = timeout.into();
+        let start = Instant::now();
+        while Instant::now().duration_since(start) <= timeout {
+            match Rtt::attach_region(core, memory_map, scan_region) {
+                Ok(rtt) => return Some(rtt),
+                Err(e) => {
+                    if matches!(e, probe_rs::rtt::Error::ControlBlockNotFound) {
+                        std::thread::sleep(Duration::from_millis(50));
+                        continue;
+                    }
+
+                    return None;
+                }
+            }
+        }
+
+        // Timeout reached
+        Some(Rtt::attach(core, memory_map).expect("RTT attach"))
+    }
     #[derive(Default)]
     pub struct ProbeRsHandler {
         pub probes_list: Vec<DebugProbeInfo>,
@@ -19,6 +68,8 @@ pub mod probe_rs_integration {
         pub rtt: Option<Rtt>,
         pub target_cores_num: usize,
         pub scan_region: ScanRegion,
+        pub control_block_address: Option<u64>,
+        pub elf_file: Option<PathBuf>,
     }
 
     impl ProbeRsHandler {
@@ -134,6 +185,22 @@ pub mod probe_rs_integration {
         ) -> Result<&Option<Rtt>, Box<dyn Error>> {
             if let Some(s) = self.session.borrow_mut() {
                 if core_idx < self.target_cores_num {
+                    let rtt_scan_regions = s.target().rtt_scan_regions.clone();
+                    self.scan_region = if rtt_scan_regions.is_empty() {
+                        ScanRegion::Ram
+                    } else {
+                        ScanRegion::Ranges(rtt_scan_regions)
+                    };
+                    if let Some(user_provided_addr) = self.control_block_address {
+                        self.scan_region = ScanRegion::Exact(user_provided_addr);
+                    } else {
+                        if let Some(elf_file) = self.elf_file.as_ref() {
+                            let mut file = fs::File::open(elf_file).expect("open elf file");
+                            if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
+                                self.scan_region = ScanRegion::Exact(rtt_addr as _);
+                            }
+                        }
+                    }
                     let memory_map = s.target().memory_map.clone();
                     // Select a core.
                     let mut core = s.core(core_idx)?;
