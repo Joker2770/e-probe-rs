@@ -21,7 +21,7 @@ pub mod m_flash_opts {
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     if 0 >= self.probe_rs_handler.probes_list.len() {
-                        ProbeRsHandler::get_probes_list(&mut self.probe_rs_handler);
+                        self.probe_rs_handler.get_probes_list();
                     }
                     egui::ComboBox::from_label("probe")
                         .selected_text(format!("{}", self.probe_selected_idx))
@@ -40,11 +40,11 @@ pub mod m_flash_opts {
                             }
                         });
                     if ui.button("refresh").clicked() {
-                        ProbeRsHandler::get_probes_list(&mut self.probe_rs_handler);
+                        self.probe_rs_handler.get_probes_list();
                     }
                 });
                 if 0 >= self.probe_rs_handler.chips_list.len() {
-                    ProbeRsHandler::get_availabe_chips(&mut self.probe_rs_handler);
+                    self.probe_rs_handler.get_availabe_chips();
                 }
 
                 ui.horizontal(|ui| {
@@ -57,11 +57,10 @@ pub mod m_flash_opts {
                         });
 
                     if ui.button("attach").clicked() {
-                        match ProbeRsHandler::attach_target(
-                            &mut self.probe_rs_handler,
-                            self.probe_selected_idx,
-                            &self.target_chip_name,
-                        ) {
+                        match self
+                            .probe_rs_handler
+                            .attach_target(self.probe_selected_idx, &self.target_chip_name)
+                        {
                             Ok(_) => {
                                 self.dowmload_rst_info.take();
                             }
@@ -72,8 +71,7 @@ pub mod m_flash_opts {
                         }
                     }
                     if ui.button("attach under reset").clicked() {
-                        match ProbeRsHandler::attach_target_under_reset(
-                            &mut self.probe_rs_handler,
+                        match self.probe_rs_handler.attach_target_under_reset(
                             self.probe_selected_idx,
                             &self.target_chip_name,
                         ) {
@@ -87,7 +85,7 @@ pub mod m_flash_opts {
                         }
                     }
                     if ui.button("reset all").clicked() {
-                        match ProbeRsHandler::reset_all_cores(&mut self.probe_rs_handler) {
+                        match self.probe_rs_handler.reset_all_cores() {
                             Ok(_) => {
                                 self.target_chip_name = "".to_owned();
                                 self.dowmload_rst_info.take();
@@ -144,16 +142,14 @@ pub mod m_flash_opts {
                 if ui.button("try to download").clicked() {
                     if self.probe_selected_idx < self.probe_rs_handler.probes_list.len() {
                         if let Some(_) = self.probe_rs_handler.session.borrow() {
-                            let rst = ProbeRsHandler::try_to_download(
-                                &mut self.probe_rs_handler,
+                            let rst = self.probe_rs_handler.try_to_download(
                                 &self.selected_file.clone().unwrap_or_default(),
                                 self.file_format_selected.clone(),
                             );
                             match rst {
                                 Ok(_) => {
                                     self.dowmload_rst_info = Some("Download complete!".to_owned());
-                                    let _ =
-                                        ProbeRsHandler::reset_all_cores(&mut self.probe_rs_handler);
+                                    let _ = self.probe_rs_handler.reset_all_cores();
                                 }
                                 Err(e) => {
                                     let tmp = format!("{:?}", e).clone();
@@ -161,8 +157,7 @@ pub mod m_flash_opts {
                                 }
                             };
                         } else {
-                            match ProbeRsHandler::attach_target_under_reset(
-                                &mut self.probe_rs_handler,
+                            match self.probe_rs_handler.attach_target_under_reset(
                                 self.probe_selected_idx,
                                 &self.target_chip_name,
                             ) {

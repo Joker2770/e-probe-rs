@@ -33,31 +33,6 @@ pub mod probe_rs_integration {
         None
     }
 
-    fn attach_retry_loop(
-        core: &mut Core,
-        memory_map: &[probe_rs::config::MemoryRegion],
-        scan_region: &ScanRegion,
-        timeout: Duration,
-    ) -> Option<Rtt> {
-        let timeout: Duration = timeout.into();
-        let start = Instant::now();
-        while Instant::now().duration_since(start) <= timeout {
-            match Rtt::attach_region(core, memory_map, scan_region) {
-                Ok(rtt) => return Some(rtt),
-                Err(e) => {
-                    if matches!(e, probe_rs::rtt::Error::ControlBlockNotFound) {
-                        std::thread::sleep(Duration::from_millis(50));
-                        continue;
-                    }
-
-                    return None;
-                }
-            }
-        }
-
-        // Timeout reached
-        Some(Rtt::attach(core, memory_map).expect("RTT attach"))
-    }
     #[derive(Default)]
     pub struct ProbeRsHandler {
         pub probes_list: Vec<DebugProbeInfo>,
@@ -67,9 +42,7 @@ pub mod probe_rs_integration {
         pub session: Option<Session>,
         pub rtt: Option<Rtt>,
         pub target_cores_num: usize,
-        pub scan_region: ScanRegion,
-        pub control_block_address: Option<u64>,
-        pub elf_file: Option<PathBuf>,
+        pub scan_region: Option<ScanRegion>,
     }
 
     impl ProbeRsHandler {
@@ -179,38 +152,91 @@ pub mod probe_rs_integration {
             Ok(&self.rtt)
         }
 
+        pub fn get_scan_region(
+            &mut self,
+            elf_file: &Option<PathBuf>,
+            control_block_address: Option<u64>,
+        ) -> Result<&Option<ScanRegion>, Box<dyn Error>> {
+            if let Some(s) = self.session.borrow_mut() {
+                let rtt_scan_regions = s.target().rtt_scan_regions.clone();
+                let mut scan_region = if rtt_scan_regions.is_empty() {
+                    ScanRegion::Ram
+                } else {
+                    ScanRegion::Ranges(rtt_scan_regions)
+                };
+                if let Some(user_provided_addr) = control_block_address {
+                    scan_region = ScanRegion::Exact(user_provided_addr);
+                } else {
+                    if let Some(elf_file) = elf_file.as_ref() {
+                        let mut file = fs::File::open(elf_file).expect("open elf file");
+                        if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
+                            scan_region = ScanRegion::Exact(rtt_addr as _);
+                        }
+                    }
+                }
+                self.scan_region = Some(scan_region);
+            }
+
+            Ok(&self.scan_region)
+        }
+
         pub fn attach_rtt_region(
             &mut self,
             core_idx: usize,
         ) -> Result<&Option<Rtt>, Box<dyn Error>> {
             if let Some(s) = self.session.borrow_mut() {
                 if core_idx < self.target_cores_num {
-                    let rtt_scan_regions = s.target().rtt_scan_regions.clone();
-                    self.scan_region = if rtt_scan_regions.is_empty() {
-                        ScanRegion::Ram
-                    } else {
-                        ScanRegion::Ranges(rtt_scan_regions)
-                    };
-                    if let Some(user_provided_addr) = self.control_block_address {
-                        self.scan_region = ScanRegion::Exact(user_provided_addr);
-                    } else {
-                        if let Some(elf_file) = self.elf_file.as_ref() {
-                            let mut file = fs::File::open(elf_file).expect("open elf file");
-                            if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
-                                self.scan_region = ScanRegion::Exact(rtt_addr as _);
-                            }
-                        }
-                    }
                     let memory_map = s.target().memory_map.clone();
                     // Select a core.
                     let mut core = s.core(core_idx)?;
 
                     // Attach to RTT
-                    let mut rtt = Rtt::attach_region(&mut core, &memory_map, &self.scan_region)?;
-                    self.up_chs_size = rtt.up_channels().len();
-                    self.rtt = Some(rtt);
+                    if let Some(scan_region) = self.scan_region.borrow() {
+                        let mut rtt = Rtt::attach_region(&mut core, &memory_map, scan_region)?;
+                        self.up_chs_size = rtt.up_channels().len();
+                        self.rtt = Some(rtt);
+                    }
                 }
             }
+            Ok(&self.rtt)
+        }
+
+        pub fn attach_retry_loop(
+            &mut self,
+            core_idx: usize,
+            timeout: Duration,
+        ) -> Result<&Option<Rtt>, Box<dyn Error>> {
+            let timeout: Duration = timeout.into();
+            let start = Instant::now();
+            if let Some(s) = self.session.borrow_mut() {
+                if core_idx < self.target_cores_num {
+                    let memory_map = s.target().memory_map.clone();
+                    // Select a core.
+                    let mut core = s.core(core_idx)?;
+                    while Instant::now().duration_since(start) <= timeout {
+                        if let Some(scan_region) = self.scan_region.borrow() {
+                            match Rtt::attach_region(&mut core, &memory_map, scan_region) {
+                                Ok(rtt) => {
+                                    self.rtt = Some(rtt);
+                                    return Ok(&self.rtt);
+                                }
+                                Err(e) => {
+                                    if matches!(e, probe_rs::rtt::Error::ControlBlockNotFound) {
+                                        std::thread::sleep(Duration::from_millis(50));
+                                        continue;
+                                    }
+
+                                    self.rtt = None;
+                                    return Ok(&self.rtt);
+                                }
+                            }
+                        }
+                    }
+                    // Timeout reached
+                    self.rtt = Some(Rtt::attach(&mut core, &memory_map).expect("RTT attach"));
+                }
+            }
+
             Ok(&self.rtt)
         }
 
