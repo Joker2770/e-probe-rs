@@ -17,6 +17,7 @@ pub mod m_rtt_opts {
         b_get_scan_region: bool,
         file_dialog: Option<FileDialog>,
         selected_file: Option<PathBuf>,
+        retry_rtt_attach_time_out: u64,
         n_items: usize,
     }
 
@@ -77,6 +78,8 @@ pub mod m_rtt_opts {
                             self.cur_target_channel_idx = 0;
                             self.b_try_to_read = false;
                             self.target_chip_name = "".to_owned();
+                            self.b_get_scan_region = false;
+                            self.selected_file = None;
                         }
                         Err(e) => {}
                     }
@@ -158,12 +161,13 @@ pub mod m_rtt_opts {
                             }
                             self.probe_rs_handler.get_up_channels_size();
                         }
-                        let mut time_out = 1000;
                         ui.add(
-                            egui::Slider::new(&mut time_out, 0..=10000).text("time out duration (ms)"),
+                            egui::Slider::new(&mut self.retry_rtt_attach_time_out, 0..=10000)
+                                .text("time out duration (ms)"),
                         );
                         if ui.button("try to attach rtt rigion with timeout").clicked() {
-                            let time_out_duration = Duration::from_millis(time_out);
+                            let time_out_duration =
+                                Duration::from_millis(self.retry_rtt_attach_time_out);
                             match self
                                 .probe_rs_handler
                                 .attach_retry_loop(self.cur_target_core_idx, time_out_duration)
@@ -180,27 +184,30 @@ pub mod m_rtt_opts {
             ui.separator();
 
             ui.horizontal(|ui| {
-                egui::ComboBox::from_label("channel")
-                    .selected_text(format!("{}", self.cur_target_channel_idx))
-                    .show_ui(ui, |ui| {
-                        for c in 0..self.probe_rs_handler.up_chs_size {
-                            ui.selectable_value(
-                                &mut self.cur_target_channel_idx,
-                                c,
-                                format!("{}", c),
-                            );
-                        }
-                    });
+                if let Some(_rtt) = self.probe_rs_handler.rtt.borrow() {
+                    egui::ComboBox::from_label("channel")
+                        .selected_text(format!("{}", self.cur_target_channel_idx))
+                        .show_ui(ui, |ui| {
+                            for c in 0..self.probe_rs_handler.up_chs_size {
+                                ui.selectable_value(
+                                    &mut self.cur_target_channel_idx,
+                                    c,
+                                    format!("{}", c),
+                                );
+                            }
+                        });
 
-                if ui.button("take channel").clicked() {
-                    self.probe_rs_handler
-                        .get_one_up_ch(self.cur_target_channel_idx);
+                    if ui.button("take channel").clicked() {
+                        self.probe_rs_handler
+                            .get_one_up_ch(self.cur_target_channel_idx);
+                    }
+                    ui.add_space(4.0);
+                    ui.checkbox(&mut self.b_try_to_read, "try to read");
+                    ui.add_space(4.0);
+                    ui.separator();
                 }
             });
 
-            ui.add_space(4.0);
-
-            ui.checkbox(&mut self.b_try_to_read, "try to read");
             let mut buf = [0u8; 64];
             let mut read_size = 0;
             if self.b_try_to_read {
@@ -213,8 +220,6 @@ pub mod m_rtt_opts {
                     }
                 }
             }
-            ui.add_space(4.0);
-            ui.separator();
             let text_style = egui::TextStyle::Body;
             let row_height = ui.text_style_height(&text_style);
             egui::ScrollArea::vertical()

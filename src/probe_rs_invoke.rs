@@ -157,25 +157,26 @@ pub mod probe_rs_integration {
             elf_file: &Option<PathBuf>,
             control_block_address: Option<u64>,
         ) -> Result<&Option<ScanRegion>, Box<dyn Error>> {
+            let mut scan_region = ScanRegion::Ram;
             if let Some(s) = self.session.borrow_mut() {
                 let rtt_scan_regions = s.target().rtt_scan_regions.clone();
-                let mut scan_region = if rtt_scan_regions.is_empty() {
+                scan_region = if rtt_scan_regions.is_empty() {
                     ScanRegion::Ram
                 } else {
                     ScanRegion::Ranges(rtt_scan_regions)
                 };
-                if let Some(user_provided_addr) = control_block_address {
-                    scan_region = ScanRegion::Exact(user_provided_addr);
-                } else {
-                    if let Some(elf_file) = elf_file.as_ref() {
-                        let mut file = fs::File::open(elf_file).expect("open elf file");
-                        if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
-                            scan_region = ScanRegion::Exact(rtt_addr as _);
-                        }
+            }
+            if let Some(user_provided_addr) = control_block_address {
+                scan_region = ScanRegion::Exact(user_provided_addr);
+            } else {
+                if let Some(elf_file) = elf_file.as_ref() {
+                    let mut file = fs::File::open(elf_file).expect("open elf file");
+                    if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
+                        scan_region = ScanRegion::Exact(rtt_addr as _);
                     }
                 }
-                self.scan_region = Some(scan_region);
             }
+            self.scan_region = Some(scan_region);
 
             Ok(&self.scan_region)
         }
