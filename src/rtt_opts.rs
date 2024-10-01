@@ -160,7 +160,7 @@ pub mod m_rtt_opts {
                         }
                         let mut time_out = 1000;
                         ui.add(
-                            egui::Slider::new(&mut time_out, 0..=10000).text("time out duration"),
+                            egui::Slider::new(&mut time_out, 0..=10000).text("time out duration (ms)"),
                         );
                         if ui.button("try to attach rtt rigion with timeout").clicked() {
                             let time_out_duration = Duration::from_millis(time_out);
