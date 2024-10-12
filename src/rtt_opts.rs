@@ -37,6 +37,7 @@ pub mod m_rtt_opts {
         selected_file: Option<PathBuf>,
         retry_rtt_attach_time_out: u64,
         log_buf: VecDeque<String>,
+        n_display_row: usize,
         n_items: usize,
     }
 
@@ -225,6 +226,11 @@ pub mod m_rtt_opts {
                 }
             });
 
+            if self.log_buf.len() >= self.n_display_row {
+                self.log_buf.pop_front();
+            } else {
+            }
+
             let mut buf = [0u8; 64];
             let mut read_size = 0;
             if self.b_try_to_read {
@@ -240,9 +246,6 @@ pub mod m_rtt_opts {
                                 ymdhms,
                                 String::from_utf8_lossy(&buf)
                             );
-                            if self.log_buf.len() >= 100 {
-                                self.log_buf.pop_front();
-                            }
                             self.log_buf.push_back(text);
                         }
                     }
@@ -260,6 +263,7 @@ pub mod m_rtt_opts {
                 .stick_to_bottom(true)
                 .show_rows(ui, row_height, self.n_items, |ui, row_range| {
                     let row_start = row_range.start;
+                    self.n_display_row = row_range.len();
                     for row in row_range {
                         if let Some(t) = self.log_buf.get(row - row_start) {
                             ui.label(t);
