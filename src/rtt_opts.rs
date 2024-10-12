@@ -267,7 +267,7 @@ pub mod m_rtt_opts {
                     }
                 });
             if read_size > 0 {
-                self.n_items += 1;
+                self.n_items = self.n_items.wrapping_add(1);
                 ui.ctx().request_repaint();
             }
         }
