@@ -1,4 +1,4 @@
-/**
+/*
  *  Simple GUI for probe-rs with egui framework.
  *  Copyright (C) 2024 Joker2770
  *

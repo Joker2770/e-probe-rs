@@ -1,4 +1,4 @@
-/**
+/*
  *  Simple GUI for probe-rs with egui framework.
  *  Copyright (C) 2024 Joker2770
  *
@@ -22,12 +22,7 @@ pub mod m_rtt_opts {
     use eframe::egui;
     use egui_file::FileDialog;
     use probe_rs::rtt::ScanRegion;
-    use std::{
-        borrow::Borrow,
-        collections::{vec_deque, VecDeque},
-        path::PathBuf,
-        time::Duration,
-    };
+    use std::{borrow::Borrow, collections::VecDeque, path::PathBuf, time::Duration};
 
     #[derive(Default)]
     pub struct RTTIO {
@@ -105,7 +100,7 @@ pub mod m_rtt_opts {
                             self.b_get_scan_region = false;
                             self.selected_file = None;
                         }
-                        Err(e) => {}
+                        Err(_) => {}
                     }
                 }
             });
@@ -122,7 +117,7 @@ pub mod m_rtt_opts {
                 if ui.button("attach rtt").clicked() {
                     match self.probe_rs_handler.attach_rtt(self.cur_target_core_idx) {
                         Ok(_) => {}
-                        Err(e) => {}
+                        Err(_) => {}
                     }
                     self.probe_rs_handler.get_up_channels_size();
                 }
@@ -181,7 +176,7 @@ pub mod m_rtt_opts {
                                 .attach_rtt_region(self.cur_target_core_idx)
                             {
                                 Ok(_) => {}
-                                Err(e) => {}
+                                Err(_) => {}
                             }
                             self.probe_rs_handler.get_up_channels_size();
                         }
@@ -245,7 +240,7 @@ pub mod m_rtt_opts {
                                 ymdhms,
                                 String::from_utf8_lossy(&buf)
                             );
-                            if self.log_buf.len() > 100 {
+                            if self.log_buf.len() >= 100 {
                                 self.log_buf.pop_front();
                             }
                             self.log_buf.push_back(text);
@@ -264,8 +259,9 @@ pub mod m_rtt_opts {
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
                 .show_rows(ui, row_height, self.n_items, |ui, row_range| {
+                    let row_start = row_range.start;
                     for row in row_range {
-                        if let Some(t) = self.log_buf.get(row) {
+                        if let Some(t) = self.log_buf.get(row - row_start) {
                             ui.label(t);
                         }
                     }
