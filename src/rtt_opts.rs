@@ -4,7 +4,12 @@ pub mod m_rtt_opts {
     use eframe::egui;
     use egui_file::FileDialog;
     use probe_rs::rtt::ScanRegion;
-    use std::{borrow::Borrow, path::PathBuf, time::Duration};
+    use std::{
+        borrow::Borrow,
+        collections::{vec_deque, VecDeque},
+        path::PathBuf,
+        time::Duration,
+    };
 
     #[derive(Default)]
     pub struct RTTIO {
@@ -18,6 +23,7 @@ pub mod m_rtt_opts {
         file_dialog: Option<FileDialog>,
         selected_file: Option<PathBuf>,
         retry_rtt_attach_time_out: u64,
+        log_buf: VecDeque<String>,
         n_items: usize,
     }
 
@@ -203,8 +209,6 @@ pub mod m_rtt_opts {
                     }
                     ui.add_space(4.0);
                     ui.checkbox(&mut self.b_try_to_read, "try to read");
-                    ui.add_space(4.0);
-                    ui.separator();
                 }
             });
 
@@ -214,34 +218,44 @@ pub mod m_rtt_opts {
                 match self.probe_rs_handler.rtt_read_from_channel(&mut buf, 0) {
                     Ok(s) => {
                         read_size = s;
+                        if read_size > 0 {
+                            let local_date_time = Local::now();
+                            let ymdhms = local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
+                            let text = format!(
+                                "{}: {} {}",
+                                self.n_items,
+                                ymdhms,
+                                String::from_utf8_lossy(&buf)
+                            );
+                            if self.log_buf.len() > 100 {
+                                self.log_buf.pop_front();
+                            }
+                            self.log_buf.push_back(text);
+                        }
                     }
                     Err(e) => {
                         ui.label(format!("{:#?}", e));
                     }
                 }
             }
+
+            ui.add_space(4.0);
+            ui.separator();
             let text_style = egui::TextStyle::Body;
             let row_height = ui.text_style_height(&text_style);
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
                 .show_rows(ui, row_height, self.n_items, |ui, row_range| {
-                    if read_size > 0 {
-                        for row in row_range {
-                            let local_date_time = Local::now();
-                            let ymdhms = local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
-                            let text = format!(
-                                "{}: {} {}",
-                                row + 1,
-                                ymdhms,
-                                String::from_utf8_lossy(&buf)
-                            );
-                            ui.label(text);
+                    for row in row_range {
+                        if let Some(t) = self.log_buf.get(row) {
+                            ui.label(t);
                         }
                     }
                 });
-
-            self.n_items += 1;
-            ui.ctx().request_repaint();
+            if read_size > 0 {
+                self.n_items += 1;
+                ui.ctx().request_repaint();
+            }
         }
     }
 }

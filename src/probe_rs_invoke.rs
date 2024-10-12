@@ -214,7 +214,7 @@ pub mod probe_rs_integration {
                     let memory_map = s.target().memory_map.clone();
                     // Select a core.
                     let mut core = s.core(core_idx)?;
-                    while Instant::now().duration_since(start) <= timeout {
+                    loop {
                         if let Some(scan_region) = self.scan_region.borrow() {
                             match Rtt::attach_region(&mut core, &memory_map, scan_region) {
                                 Ok(rtt) => {
@@ -231,6 +231,11 @@ pub mod probe_rs_integration {
                                     return Ok(&self.rtt);
                                 }
                             }
+                        }
+                        if Instant::now().duration_since(start) <= timeout {
+                            continue;
+                        } else {
+                            break;
                         }
                     }
                     // Timeout reached
