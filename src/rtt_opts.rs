@@ -127,78 +127,82 @@ pub mod m_rtt_opts {
             ui.separator();
             ui.add_space(4.0);
 
-            ui.vertical(|ui| {
-                if ui.button("Select file").clicked() {
-                    // Open the file dialog to select a file.
-                    // let filter = Box::new({
-                    //     let ext_0 = Some(OsStr::new("hex"));
-                    //     let ext_1 = Some(OsStr::new("elf"));
-                    //     let ext_2= Some(OsStr::new("bin"));
-                    //     move |path: &Path| -> bool { path.extension() == ext_0 || path.extension() == ext_1 || path.extension() == ext_2 }
-                    // });
-                    let mut dialog = FileDialog::open_file(self.selected_file.clone());
-                    dialog.open();
-                    self.file_dialog = Some(dialog);
-                }
+            ui.horizontal(|ui| {
+                ui.label("SEGGAR RTT");
+                ui.separator();
+                ui.vertical(|ui| {
+                    if ui.button("Select file").clicked() {
+                        // Open the file dialog to select a file.
+                        // let filter = Box::new({
+                        //     let ext_0 = Some(OsStr::new("hex"));
+                        //     let ext_1 = Some(OsStr::new("elf"));
+                        //     let ext_2= Some(OsStr::new("bin"));
+                        //     move |path: &Path| -> bool { path.extension() == ext_0 || path.extension() == ext_1 || path.extension() == ext_2 }
+                        // });
+                        let mut dialog = FileDialog::open_file(self.selected_file.clone());
+                        dialog.open();
+                        self.file_dialog = Some(dialog);
+                    }
 
-                ui.label(format!("Selected file: {:?}", self.selected_file));
-                if let Some(dialog) = &mut self.file_dialog {
-                    if dialog.show(ctx).selected() {
-                        if let Some(file) = dialog.path() {
-                            self.selected_file = Some(file.to_path_buf());
+                    ui.label(format!("Selected elf file: {:?}", self.selected_file));
+                    if let Some(dialog) = &mut self.file_dialog {
+                        if dialog.show(ctx).selected() {
+                            if let Some(file) = dialog.path() {
+                                self.selected_file = Some(file.to_path_buf());
+                            }
                         }
                     }
-                }
 
-                if ui.button("get scan region from elf").clicked() {
-                    match self
-                        .probe_rs_handler
-                        .get_scan_region(self.selected_file.borrow(), None)
-                    {
-                        Ok(_) => {
-                            if let Some(sr) = self.probe_rs_handler.scan_region.borrow() {
-                                match sr {
-                                    ScanRegion::Exact(_) => {
-                                        self.b_get_scan_region = true;
+                    if ui.button("get scan region from elf").clicked() {
+                        match self
+                            .probe_rs_handler
+                            .get_scan_region(self.selected_file.borrow(), None)
+                        {
+                            Ok(_) => {
+                                if let Some(sr) = self.probe_rs_handler.scan_region.borrow() {
+                                    match sr {
+                                        ScanRegion::Exact(_) => {
+                                            self.b_get_scan_region = true;
+                                        }
+                                        _ => {}
                                     }
-                                    _ => {}
                                 }
                             }
+                            Err(_) => {}
                         }
-                        Err(_) => {}
                     }
-                }
 
-                if self.b_get_scan_region {
-                    ui.horizontal(|ui| {
-                        if ui.button("attach rtt region").clicked() {
-                            match self
-                                .probe_rs_handler
-                                .attach_rtt_region(self.cur_target_core_idx)
-                            {
-                                Ok(_) => {}
-                                Err(_) => {}
+                    if self.b_get_scan_region {
+                        ui.horizontal(|ui| {
+                            if ui.button("attach rtt region").clicked() {
+                                match self
+                                    .probe_rs_handler
+                                    .attach_rtt_region(self.cur_target_core_idx)
+                                {
+                                    Ok(_) => {}
+                                    Err(_) => {}
+                                }
+                                self.probe_rs_handler.get_up_channels_size();
                             }
-                            self.probe_rs_handler.get_up_channels_size();
-                        }
-                        ui.add(
-                            egui::Slider::new(&mut self.retry_rtt_attach_time_out, 0..=10000)
-                                .text("time out duration (ms)"),
-                        );
-                        if ui.button("try to attach rtt rigion with timeout").clicked() {
-                            let time_out_duration =
-                                Duration::from_millis(self.retry_rtt_attach_time_out);
-                            match self
-                                .probe_rs_handler
-                                .attach_retry_loop(self.cur_target_core_idx, time_out_duration)
-                            {
-                                Ok(_) => {}
-                                Err(_) => {}
+                            ui.add(
+                                egui::Slider::new(&mut self.retry_rtt_attach_time_out, 0..=10000)
+                                    .text("time out duration (ms)"),
+                            );
+                            if ui.button("try to attach rtt rigion with timeout").clicked() {
+                                let time_out_duration =
+                                    Duration::from_millis(self.retry_rtt_attach_time_out);
+                                match self
+                                    .probe_rs_handler
+                                    .attach_retry_loop(self.cur_target_core_idx, time_out_duration)
+                                {
+                                    Ok(_) => {}
+                                    Err(_) => {}
+                                }
+                                self.probe_rs_handler.get_up_channels_size();
                             }
-                            self.probe_rs_handler.get_up_channels_size();
-                        }
-                    });
-                }
+                        });
+                    }
+                });
             });
             ui.add_space(4.0);
             ui.separator();
@@ -231,7 +235,7 @@ pub mod m_rtt_opts {
             } else {
             }
 
-            let mut buf = [0u8; 64];
+            let mut buf = [0u8; 128];
             let mut read_size = 0;
             if self.b_try_to_read {
                 match self.probe_rs_handler.rtt_read_from_channel(&mut buf, 0) {
@@ -261,6 +265,7 @@ pub mod m_rtt_opts {
             let row_height = ui.text_style_height(&text_style);
             egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
+                .auto_shrink(false)
                 .show_rows(ui, row_height, self.n_items, |ui, row_range| {
                     let row_start = row_range.start;
                     self.n_display_row = row_range.len();
