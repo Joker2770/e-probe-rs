@@ -120,6 +120,9 @@ pub mod m_flash_opts {
                                 Ok(_) => {
                                     self.target_chip_name = "".to_owned();
                                     self.dowmload_rst_info.take();
+                                    self.probe_selected_idx = 0;
+                                    self.probe_rs_handler = None;
+                                    self.selected_file = None;
                                 }
                                 Err(e) => {
                                     let tmp = format!("{:#?}", e).clone();

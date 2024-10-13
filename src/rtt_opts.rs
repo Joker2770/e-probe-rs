@@ -48,16 +48,16 @@ pub mod m_rtt_opts {
 
     impl RTTIO {
         pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
-            ui.horizontal(|ui| {
-                if let None = self.probe_rs_handler.borrow_mut() {
-                    self.probe_rs_handler = Some(ProbeRsHandler::default());
+            if let None = self.probe_rs_handler.borrow_mut() {
+                self.probe_rs_handler = Some(ProbeRsHandler::default());
+            }
+            if let Some(h) = self.probe_rs_handler.borrow_mut() {
+                if 0 >= h.probes_list.len() {
+                    h.get_probes_list();
                 }
-                if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                    if 0 >= h.probes_list.len() {
-                        h.get_probes_list();
-                    }
-                }
+            }
 
+            ui.horizontal(|ui| {
                 egui::ComboBox::from_label("probe")
                     .selected_text(format!("{}", self.probe_selected_idx))
                     .show_ui(ui, |ui| {
