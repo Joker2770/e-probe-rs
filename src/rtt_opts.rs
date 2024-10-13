@@ -301,7 +301,8 @@ pub mod m_rtt_opts {
                     self.n_display_row = row_range.len();
                     for row in row_range {
                         if let Some(t) = self.log_buf.get(row - row_start) {
-                            ui.label(t);
+                            let label = egui::Label::new(t).extend();
+                            ui.add(label);
                         }
                     }
                 });
