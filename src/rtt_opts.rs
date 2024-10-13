@@ -238,7 +238,10 @@ pub mod m_rtt_opts {
             let mut buf = [0u8; 128];
             let mut read_size = 0;
             if self.b_try_to_read {
-                match self.probe_rs_handler.rtt_read_from_channel(&mut buf, 0) {
+                match self
+                    .probe_rs_handler
+                    .rtt_read_from_channel(&mut buf, self.cur_target_channel_idx)
+                {
                     Ok(s) => {
                         read_size = s;
                         if read_size > 0 {
