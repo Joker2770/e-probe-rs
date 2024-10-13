@@ -21,12 +21,15 @@ pub mod m_flash_opts {
     use eframe::egui;
     use egui_file::FileDialog;
     use probe_rs::flashing;
-    use std::{borrow::Borrow, path::PathBuf};
+    use std::{
+        borrow::{Borrow, BorrowMut},
+        path::PathBuf,
+    };
 
     #[derive(Default)]
     pub struct FlashProgram {
         probe_selected_idx: usize,
-        probe_rs_handler: ProbeRsHandler,
+        probe_rs_handler: Option<ProbeRsHandler>,
         target_chip_name: String,
         file_format_selected: flashing::Format,
         dowmload_rst_info: Option<String>,
@@ -36,81 +39,92 @@ pub mod m_flash_opts {
 
     impl FlashProgram {
         pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut egui::Ui) {
+            if let None = self.probe_rs_handler.borrow_mut() {
+                self.probe_rs_handler = Some(ProbeRsHandler::default());
+            }
+
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
-                    if 0 >= self.probe_rs_handler.probes_list.len() {
-                        self.probe_rs_handler.get_probes_list();
-                    }
-                    egui::ComboBox::from_label("probe")
-                        .selected_text(format!("{}", self.probe_selected_idx))
-                        .show_ui(ui, |ui| {
-                            for (i, p) in self.probe_rs_handler.probes_list.iter().enumerate() {
-                                ui.selectable_value(
-                                    &mut self.probe_selected_idx,
-                                    i,
-                                    format!(
-                                        "{} (pid: {} vid: {})",
-                                        p.identifier.as_str(),
-                                        p.product_id,
-                                        p.vendor_id
-                                    ),
-                                );
-                            }
-                        });
-                    if ui.button("refresh").clicked() {
-                        self.probe_rs_handler.get_probes_list();
+                    if let Some(h) = self.probe_rs_handler.borrow_mut() {
+                        if 0 >= h.probes_list.len() {
+                            h.get_probes_list();
+                        }
+                        egui::ComboBox::from_label("probe")
+                            .selected_text(format!("{}", self.probe_selected_idx))
+                            .show_ui(ui, |ui| {
+                                for (i, p) in h.probes_list.iter().enumerate() {
+                                    ui.selectable_value(
+                                        &mut self.probe_selected_idx,
+                                        i,
+                                        format!(
+                                            "{} (pid: {} vid: {})",
+                                            p.identifier.as_str(),
+                                            p.product_id,
+                                            p.vendor_id
+                                        ),
+                                    );
+                                }
+                            });
+                        if ui.button("refresh").clicked() {
+                            h.get_probes_list();
+                        }
                     }
                 });
-                if 0 >= self.probe_rs_handler.chips_list.len() {
-                    self.probe_rs_handler.get_availabe_chips();
+                if let Some(h) = self.probe_rs_handler.borrow_mut() {
+                    if 0 >= h.chips_list.len() {
+                        h.get_availabe_chips();
+                    }
                 }
 
                 ui.horizontal(|ui| {
-                    egui::ComboBox::from_label("target")
-                        .selected_text(format!("{}", self.target_chip_name))
-                        .show_ui(ui, |ui| {
-                            for t in self.probe_rs_handler.chips_list.iter() {
-                                ui.selectable_value(&mut self.target_chip_name, t.to_string(), t);
-                            }
-                        });
+                    if let Some(h) = self.probe_rs_handler.borrow_mut() {
+                        egui::ComboBox::from_label("target")
+                            .selected_text(format!("{}", self.target_chip_name))
+                            .show_ui(ui, |ui| {
+                                for t in h.chips_list.iter() {
+                                    ui.selectable_value(
+                                        &mut self.target_chip_name,
+                                        t.to_string(),
+                                        t,
+                                    );
+                                }
+                            });
 
-                    if ui.button("attach").clicked() {
-                        match self
-                            .probe_rs_handler
-                            .attach_target(self.probe_selected_idx, &self.target_chip_name)
-                        {
-                            Ok(_) => {
-                                self.dowmload_rst_info.take();
-                            }
-                            Err(e) => {
-                                let tmp = format!("{:#?}", e).clone();
-                                self.dowmload_rst_info = Some(tmp)
+                        if ui.button("attach").clicked() {
+                            match h.attach_target(self.probe_selected_idx, &self.target_chip_name) {
+                                Ok(_) => {
+                                    self.dowmload_rst_info.take();
+                                }
+                                Err(e) => {
+                                    let tmp = format!("{:#?}", e).clone();
+                                    self.dowmload_rst_info = Some(tmp)
+                                }
                             }
                         }
-                    }
-                    if ui.button("attach under reset").clicked() {
-                        match self.probe_rs_handler.attach_target_under_reset(
-                            self.probe_selected_idx,
-                            &self.target_chip_name,
-                        ) {
-                            Ok(_) => {
-                                self.dowmload_rst_info.take();
-                            }
-                            Err(e) => {
-                                let tmp = format!("{:#?}", e).clone();
-                                self.dowmload_rst_info = Some(tmp)
+                        if ui.button("attach under reset").clicked() {
+                            match h.attach_target_under_reset(
+                                self.probe_selected_idx,
+                                &self.target_chip_name,
+                            ) {
+                                Ok(_) => {
+                                    self.dowmload_rst_info.take();
+                                }
+                                Err(e) => {
+                                    let tmp = format!("{:#?}", e).clone();
+                                    self.dowmload_rst_info = Some(tmp)
+                                }
                             }
                         }
-                    }
-                    if ui.button("reset all").clicked() {
-                        match self.probe_rs_handler.reset_all_cores() {
-                            Ok(_) => {
-                                self.target_chip_name = "".to_owned();
-                                self.dowmload_rst_info.take();
-                            }
-                            Err(e) => {
-                                let tmp = format!("{:#?}", e).clone();
-                                self.dowmload_rst_info = Some(tmp)
+                        if ui.button("reset all").clicked() {
+                            match h.reset_all_cores() {
+                                Ok(_) => {
+                                    self.target_chip_name = "".to_owned();
+                                    self.dowmload_rst_info.take();
+                                }
+                                Err(e) => {
+                                    let tmp = format!("{:#?}", e).clone();
+                                    self.dowmload_rst_info = Some(tmp)
+                                }
                             }
                         }
                     }
@@ -158,31 +172,34 @@ pub mod m_flash_opts {
                         );
                     });
                 if ui.button("try to download").clicked() {
-                    if self.probe_selected_idx < self.probe_rs_handler.probes_list.len() {
-                        if let Some(_) = self.probe_rs_handler.session.borrow() {
-                            let rst = self.probe_rs_handler.try_to_download(
-                                &self.selected_file.clone().unwrap_or_default(),
-                                self.file_format_selected.clone(),
-                            );
-                            match rst {
-                                Ok(_) => {
-                                    self.dowmload_rst_info = Some("Download complete!".to_owned());
-                                    let _ = self.probe_rs_handler.reset_all_cores();
-                                }
-                                Err(e) => {
-                                    let tmp = format!("{:?}", e).clone();
-                                    self.dowmload_rst_info = Some(tmp);
-                                }
-                            };
-                        } else {
-                            match self.probe_rs_handler.attach_target_under_reset(
-                                self.probe_selected_idx,
-                                &self.target_chip_name,
-                            ) {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    let tmp = format!("{:#?}", e).clone();
-                                    self.dowmload_rst_info = Some(tmp)
+                    if let Some(h) = self.probe_rs_handler.borrow_mut() {
+                        if self.probe_selected_idx < h.probes_list.len() {
+                            if let Some(_) = h.session.borrow() {
+                                let rst = h.try_to_download(
+                                    &self.selected_file.clone().unwrap_or_default(),
+                                    self.file_format_selected.clone(),
+                                );
+                                match rst {
+                                    Ok(_) => {
+                                        self.dowmload_rst_info =
+                                            Some("Download complete!".to_owned());
+                                        let _ = h.reset_all_cores();
+                                    }
+                                    Err(e) => {
+                                        let tmp = format!("{:?}", e).clone();
+                                        self.dowmload_rst_info = Some(tmp);
+                                    }
+                                };
+                            } else {
+                                match h.attach_target_under_reset(
+                                    self.probe_selected_idx,
+                                    &self.target_chip_name,
+                                ) {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        let tmp = format!("{:#?}", e).clone();
+                                        self.dowmload_rst_info = Some(tmp)
+                                    }
                                 }
                             }
                         }
