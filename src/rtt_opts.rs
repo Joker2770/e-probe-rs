@@ -153,7 +153,7 @@ pub mod m_rtt_opts {
             ui.add_space(4.0);
 
             ui.horizontal(|ui| {
-                ui.label("SEGGAR RTT");
+                ui.label("SEGGER RTT");
                 ui.separator();
                 ui.vertical(|ui| {
                     if ui.button("Select file").clicked() {
@@ -279,6 +279,7 @@ pub mod m_rtt_opts {
                                     String::from_utf8_lossy(&buf)
                                 );
                                 self.log_buf.push_back(text);
+                                self.n_items = self.n_items.wrapping_add(1);
                             }
                         }
                         Err(e) => {
@@ -304,10 +305,7 @@ pub mod m_rtt_opts {
                         }
                     }
                 });
-            if read_size > 0 {
-                self.n_items = self.n_items.wrapping_add(1);
-                ui.ctx().request_repaint();
-            }
+            ui.ctx().request_repaint();
         }
     }
 }
