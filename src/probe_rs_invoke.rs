@@ -276,6 +276,8 @@ pub mod probe_rs_integration {
                 if ch_number < self.up_chs_size {
                     let up_chs = r.up_channels();
                     self.cur_ch = up_chs.take(ch_number);
+                    // update size after take
+                    self.up_chs_size = up_chs.len();
                 }
             }
             &self.cur_ch

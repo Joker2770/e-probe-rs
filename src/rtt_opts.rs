@@ -20,6 +20,7 @@ pub mod m_rtt_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use chrono::Local;
     use eframe::egui;
+    use egui::Widget;
     use egui_file::FileDialog;
     use probe_rs::rtt::ScanRegion;
     use std::{
@@ -43,6 +44,7 @@ pub mod m_rtt_opts {
         retry_rtt_attach_time_out: u64,
         log_buf: VecDeque<String>,
         n_display_row: usize,
+        b_take: bool,
         n_items: usize,
     }
 
@@ -248,8 +250,11 @@ pub mod m_rtt_opts {
                                 }
                             });
 
-                        if ui.button("take channel").clicked() {
+                        if ui.checkbox(&mut self.b_take, "take channel").clicked() {
                             h.get_one_up_ch(self.cur_target_channel_idx);
+                            if let None = h.cur_ch {
+                                self.b_take = false;
+                            }
                         }
                         ui.add_space(4.0);
                         ui.checkbox(&mut self.b_try_to_read, "try to read");
@@ -263,12 +268,11 @@ pub mod m_rtt_opts {
             }
 
             let mut buf = [0u8; 128];
-            let mut read_size = 0;
             if self.b_try_to_read {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
                     match h.rtt_read_from_channel(&mut buf, self.cur_target_channel_idx) {
                         Ok(s) => {
-                            read_size = s;
+                            let read_size = s;
                             if read_size > 0 {
                                 let local_date_time = Local::now();
                                 let ymdhms = local_date_time.format("%Y-%m-%d %H:%M:%S%.3f");
