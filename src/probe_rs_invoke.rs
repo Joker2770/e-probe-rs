@@ -141,6 +141,7 @@ pub mod probe_rs_integration {
             self.target_cores_num
         }
 
+        #[allow(dead_code)]
         pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core>, Box<dyn Error>> {
             let mut opt_core = None;
             if let Some(s) = self.session.borrow_mut() {

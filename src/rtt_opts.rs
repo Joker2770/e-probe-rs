@@ -20,7 +20,6 @@ pub mod m_rtt_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use chrono::Local;
     use eframe::egui;
-    use egui::Widget;
     use egui_file::FileDialog;
     use probe_rs::rtt::ScanRegion;
     use std::{
