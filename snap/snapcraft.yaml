@@ -1,0 +1,57 @@
+#    Simple GUI for probe-rs with egui framework.
+#    Copyright (C) 2024 joker2770
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+name: e-probe-rs
+version: git
+summary: Simple GUI for probe-rs with egui framework.
+description: |
+  Simple GUI for probe-rs with egui framework.
+
+base: core20
+confinement: strict
+grade: stable
+
+parts:
+  e-probe-rs:
+    plugin: rust
+    source: https://github.com/Joker2770/e-probe-rs.git 
+    source-type: git
+    source-branch: master
+    build-packages:
+      - pkg-config
+      - gcc
+      - g++
+      - cmake
+      - make
+      - libudev-dev
+      - libgl1-mesa-dev
+    stage-packages:
+      - libgl1
+      - libgl1-mesa-dri
+      - libglu1-mesa
+
+apps:
+  e-probe-rs:
+    command: bin/e-probe-rs
+    plugs:
+      - home
+      - desktop
+      - desktop-legacy
+      - wayland
+      - unity7
+      - x11
+      - opengl
+      - removable-media
