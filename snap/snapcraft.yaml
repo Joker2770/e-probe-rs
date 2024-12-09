@@ -29,7 +29,7 @@ parts:
     plugin: rust
     source: https://github.com/Joker2770/e-probe-rs.git 
     source-type: git
-    source-branch: master
+    source-branch: main
     build-packages:
       - pkg-config
       - gcc
