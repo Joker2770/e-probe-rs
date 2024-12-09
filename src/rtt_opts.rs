@@ -43,7 +43,6 @@ pub mod m_rtt_opts {
         retry_rtt_attach_time_out: u64,
         log_buf: VecDeque<String>,
         n_display_row: usize,
-        b_take: bool,
         n_items: usize,
     }
 
@@ -249,12 +248,6 @@ pub mod m_rtt_opts {
                                 }
                             });
 
-                        if ui.checkbox(&mut self.b_take, "take channel").clicked() {
-                            h.get_one_up_ch(self.cur_target_channel_idx);
-                            if let None = h.cur_ch {
-                                self.b_take = false;
-                            }
-                        }
                         ui.add_space(4.0);
                         ui.checkbox(&mut self.b_try_to_read, "try to read");
                     }
@@ -269,7 +262,11 @@ pub mod m_rtt_opts {
             let mut buf = [0u8; 128];
             if self.b_try_to_read {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                    match h.rtt_read_from_channel(&mut buf, self.cur_target_channel_idx) {
+                    match h.rtt_read_from_channel(
+                        &mut buf,
+                        self.cur_target_channel_idx,
+                        self.cur_target_channel_idx,
+                    ) {
                         Ok(s) => {
                             let read_size = s;
                             if read_size > 0 {
