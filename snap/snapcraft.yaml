@@ -55,3 +55,4 @@ apps:
       - x11
       - opengl
       - removable-media
+      - raw-usb

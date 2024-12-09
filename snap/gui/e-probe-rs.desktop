@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=0.1.0
+Encoding=UTF-8
+Name=e-probe-rs
+Comment=Simple GUI for probe-rs with egui framework.
+Exec=e-probe-rs
+Terminal=false
+Type=Application
+Categories=Utility
+Icon=${SNAP}/meta/gui/e-probe-rs.png
