@@ -18,7 +18,8 @@ name: e-probe-rs
 version: git
 summary: Simple GUI for probe-rs with egui framework.
 description: |
-  Simple GUI for probe-rs with egui framework.
+  The user-friendly, flexible and cross-platform embedded tool frontend.
+  It is easy to program and debug kinds of MCUs.
 
   **Need hardware access of 'raw-usb', connect to 'raw-usb' plug first.**
 
@@ -79,6 +80,7 @@ parts:
       - libgl1
       - libgl1-mesa-dri
       - libglu1-mesa
+      - libxkbcommon-x11
 
 apps:
   e-probe-rs:
