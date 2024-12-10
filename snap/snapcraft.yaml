@@ -80,7 +80,7 @@ parts:
       - libgl1
       - libgl1-mesa-dri
       - libglu1-mesa
-      - libxkbcommon-x11
+      - libxkbcommon-x11-dev
 
 apps:
   e-probe-rs:
