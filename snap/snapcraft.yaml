@@ -20,9 +20,37 @@ summary: Simple GUI for probe-rs with egui framework.
 description: |
   Simple GUI for probe-rs with egui framework.
 
+  **Need hardware access of 'raw-usb', connect to 'raw-usb' plug first.**
+
+  `sudo snap connect e-probe-rs:raw-usb :raw-usb`
+
 base: core20
 confinement: strict
 grade: stable
+
+layout:
+  /usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.0:
+    bind: $SNAP/gnome-platform/usr/lib/$SNAPCRAFT_ARCH_TRIPLET/webkit2gtk-4.0
+  /usr/share/xml/iso-codes:
+    bind: $SNAP/gnome-platform/usr/share/xml/iso-codes
+
+plugs:
+  gnome-3-38-2004:
+    default-provider: gnome-3-38-2004
+    interface: content
+    target: $SNAP/gnome-platform
+  gtk-3-themes:
+    default-provider: gtk-common-themes
+    interface: content
+    target: $SNAP/data-dir/themes
+  icon-themes:
+    default-provider: gtk-common-themes
+    interface: content
+    target: $SNAP/data-dir/icons
+  sound-themes:
+    default-provider: gtk-common-themes
+    interface: content
+    target: $SNAP/data-dir/sounds
 
 parts:
   e-probe-rs:
@@ -45,11 +73,16 @@ parts:
 
 apps:
   e-probe-rs:
+    extensions: [gnome-3-38]
     command: bin/e-probe-rs
+    environment:
+      GTK_USE_PORTAL: '1'
+      SNAP_DESKTOP_RUNTIME: $SNAP/gnome-platform
     plugs:
       - home
       - desktop
       - desktop-legacy
+      - gsettings
       - wayland
       - unity7
       - x11
