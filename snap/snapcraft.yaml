@@ -18,8 +18,8 @@ name: e-probe-rs
 version: git
 summary: Simple GUI for probe-rs with egui framework.
 description: |
-  The user-friendly, flexible and cross-platform embedded tool frontend.
-  It is easy to program and debug kinds of MCUs.
+  The user-friendly, flexible and cross-platform tool frontend for programing and debugging
+  embedded ARM and RISC-V targets(such as stm32, esp32, gd32, etc.) on a separate host.
 
   **Need hardware access of 'raw-usb', connect to 'raw-usb' plug first.**
 
