@@ -18,7 +18,6 @@
 
 pub mod m_flash_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
-    use eframe::egui;
     use egui_file::FileDialog;
     use probe_rs::flashing;
     use std::{
@@ -39,7 +38,7 @@ pub mod m_flash_opts {
     }
 
     impl FlashProgram {
-        pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut egui::Ui) {
+        pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut eframe::egui::Ui) {
             if let None = self.probe_rs_handler.borrow_mut() {
                 self.probe_rs_handler = Some(ProbeRsHandler::default());
             }
@@ -50,7 +49,7 @@ pub mod m_flash_opts {
                         if 0 >= h.probes_list.len() {
                             h.get_probes_list();
                         }
-                        egui::ComboBox::from_label("probe")
+                        eframe::egui::ComboBox::from_label("probe")
                             .selected_text(format!("{}", self.probe_selected_idx))
                             .show_ui(ui, |ui| {
                                 for (i, p) in h.probes_list.iter().enumerate() {
@@ -79,7 +78,7 @@ pub mod m_flash_opts {
 
                 ui.horizontal(|ui| {
                     if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                        egui::ComboBox::from_label("target")
+                        eframe::egui::ComboBox::from_label("target")
                             .selected_text(format!("{}", self.target_chip_name))
                             .show_ui(ui, |ui| {
                                 for t in h.chips_list.iter() {
@@ -102,7 +101,7 @@ pub mod m_flash_opts {
                             });
 
                         ui.add(
-                            egui::TextEdit::singleline(&mut self.filter_s)
+                            eframe::egui::TextEdit::singleline(&mut self.filter_s)
                                 .hint_text("chips filter")
                                 .desired_width(100.0),
                         );
@@ -172,7 +171,7 @@ pub mod m_flash_opts {
                     }
                 }
 
-                egui::ComboBox::from_label("File Format")
+                eframe::egui::ComboBox::from_label("File Format")
                     .selected_text(format!("{:?}", self.file_format_selected))
                     .show_ui(ui, |ui| {
                         ui.selectable_value(

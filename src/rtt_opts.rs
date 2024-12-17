@@ -19,7 +19,6 @@
 pub mod m_rtt_opts {
     use crate::probe_rs_invoke::probe_rs_integration::ProbeRsHandler;
     use chrono::Local;
-    use eframe::egui;
     use egui_file::FileDialog;
     use probe_rs::rtt::ScanRegion;
     use std::{
@@ -48,7 +47,7 @@ pub mod m_rtt_opts {
     }
 
     impl RTTIO {
-        pub fn ui(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut eframe::egui::Ui) {
             if let None = self.probe_rs_handler.borrow_mut() {
                 self.probe_rs_handler = Some(ProbeRsHandler::default());
             }
@@ -59,7 +58,7 @@ pub mod m_rtt_opts {
             }
 
             ui.horizontal(|ui| {
-                egui::ComboBox::from_label("probe")
+                eframe::egui::ComboBox::from_label("probe")
                     .selected_text(format!("{}", self.probe_selected_idx))
                     .show_ui(ui, |ui| {
                         if let Some(h) = self.probe_rs_handler.borrow() {
@@ -91,7 +90,7 @@ pub mod m_rtt_opts {
 
             ui.horizontal(|ui| {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                    egui::ComboBox::from_label("target")
+                    eframe::egui::ComboBox::from_label("target")
                         .selected_text(format!("{}", self.target_chip_name))
                         .show_ui(ui, |ui| {
                             for t in h.chips_list.iter() {
@@ -114,7 +113,7 @@ pub mod m_rtt_opts {
                         });
 
                     ui.add(
-                        egui::TextEdit::singleline(&mut self.filter_s)
+                        eframe::egui::TextEdit::singleline(&mut self.filter_s)
                             .hint_text("chips filter")
                             .desired_width(100.0),
                     );
@@ -149,7 +148,7 @@ pub mod m_rtt_opts {
 
             ui.horizontal(|ui| {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                    egui::ComboBox::from_label("core")
+                    eframe::egui::ComboBox::from_label("core")
                         .selected_text(format!("{}", self.cur_target_core_idx))
                         .show_ui(ui, |ui| {
                             for c in 0..h.target_cores_num {
@@ -229,7 +228,7 @@ pub mod m_rtt_opts {
                                     h.get_up_channels_size();
                                 }
                                 ui.add(
-                                    egui::Slider::new(
+                                    eframe::egui::Slider::new(
                                         &mut self.retry_rtt_attach_time_out,
                                         0..=10000,
                                     )
@@ -258,7 +257,7 @@ pub mod m_rtt_opts {
             ui.horizontal(|ui| {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
                     if let Some(_rtt) = h.rtt.borrow() {
-                        egui::ComboBox::from_label("channel")
+                        eframe::egui::ComboBox::from_label("channel")
                             .selected_text(format!("{}", self.cur_target_channel_idx))
                             .show_ui(ui, |ui| {
                                 for c in 0..h.up_chs_size {
@@ -313,9 +312,9 @@ pub mod m_rtt_opts {
 
             ui.add_space(4.0);
             ui.separator();
-            let text_style = egui::TextStyle::Body;
+            let text_style = eframe::egui::TextStyle::Body;
             let row_height = ui.text_style_height(&text_style);
-            egui::ScrollArea::vertical()
+            eframe::egui::ScrollArea::vertical()
                 .stick_to_bottom(true)
                 .auto_shrink(false)
                 .show_rows(ui, row_height, self.n_items, |ui, row_range| {
@@ -323,7 +322,7 @@ pub mod m_rtt_opts {
                     self.n_display_row = row_range.len();
                     for row in row_range {
                         if let Some(t) = self.log_buf.get(row - row_start) {
-                            let label = egui::Label::new(t).extend();
+                            let label = eframe::egui::Label::new(t).extend();
                             ui.add(label);
                         }
                     }

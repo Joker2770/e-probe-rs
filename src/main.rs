@@ -23,14 +23,13 @@ mod probe_opts;
 mod probe_rs_invoke;
 mod rtt_opts;
 
-use eframe::egui;
 use flash_opts::m_flash_opts::FlashProgram;
 use probe_opts::m_probe_opts::ProbeOperations;
 use rtt_opts::m_rtt_opts::RTTIO;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([650.0, 480.0]),
+        viewport: eframe::egui::ViewportBuilder::default().with_inner_size([650.0, 480.0]),
         ..Default::default()
     };
     eframe::run_native(
@@ -49,7 +48,7 @@ struct MyApp {
 
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &eframe::egui::Context, _frame: &mut eframe::Frame) {
-        egui::CentralPanel::default().show(ctx, |ui| {
+        eframe::egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
                 ui.selectable_value(
                     &mut self.stack_window,
