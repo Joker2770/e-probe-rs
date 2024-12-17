@@ -35,6 +35,7 @@ pub mod m_flash_opts {
         dowmload_rst_info: Option<String>,
         file_dialog: Option<FileDialog>,
         selected_file: Option<PathBuf>,
+        filter_s: String,
     }
 
     impl FlashProgram {
@@ -82,13 +83,29 @@ pub mod m_flash_opts {
                             .selected_text(format!("{}", self.target_chip_name))
                             .show_ui(ui, |ui| {
                                 for t in h.chips_list.iter() {
-                                    ui.selectable_value(
-                                        &mut self.target_chip_name,
-                                        t.to_string(),
-                                        t,
-                                    );
+                                    if self.filter_s.len() > 0 {
+                                        if let Some(_) = t.find(&self.filter_s) {
+                                            ui.selectable_value(
+                                                &mut self.target_chip_name,
+                                                t.to_string(),
+                                                t,
+                                            );
+                                        }
+                                    } else {
+                                        ui.selectable_value(
+                                            &mut self.target_chip_name,
+                                            t.to_string(),
+                                            t,
+                                        );
+                                    }
                                 }
                             });
+
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.filter_s)
+                                .hint_text("chips filter")
+                                .desired_width(100.0),
+                        );
 
                         if ui.button("attach").clicked() {
                             match h.attach_target(self.probe_selected_idx, &self.target_chip_name) {
