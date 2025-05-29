@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-chrono = "0.4.40"
+chrono = "0.4.41"
 eframe = "0.31.1"
 egui_file = "0.22.1"
-goblin = "0.9.3"
-probe-rs = "0.27.0"
+goblin = "0.10.0"
+probe-rs = "0.29.0"
 
 [profile.dev]
 codegen-units = 1   # better optimizations
