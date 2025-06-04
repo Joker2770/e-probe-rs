@@ -1,6 +1,6 @@
 /*
  *  Simple GUI for probe-rs with egui framework.
- *  Copyright (C) 2024 Joker2770
+ *  Copyright (C) 2024-2025 Joker2770
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,14 +39,14 @@ pub mod m_flash_opts {
 
     impl FlashProgram {
         pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut eframe::egui::Ui) {
-            if let None = self.probe_rs_handler.borrow_mut() {
+            if self.probe_rs_handler.borrow_mut().is_none() {
                 self.probe_rs_handler = Some(ProbeRsHandler::default());
             }
 
             ui.vertical(|ui| {
                 ui.horizontal(|ui| {
                     if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                        if 0 >= h.probes_list.len() {
+                        if h.probes_list.is_empty() {
                             h.get_probes_list();
                         }
                         eframe::egui::ComboBox::from_label("probe")
@@ -71,7 +71,7 @@ pub mod m_flash_opts {
                     }
                 });
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                    if 0 >= h.chips_list.len() {
+                    if h.chips_list.is_empty() {
                         h.get_availabe_chips();
                     }
                 }
@@ -79,11 +79,11 @@ pub mod m_flash_opts {
                 ui.horizontal(|ui| {
                     if let Some(h) = self.probe_rs_handler.borrow_mut() {
                         eframe::egui::ComboBox::from_label("target")
-                            .selected_text(format!("{}", self.target_chip_name))
+                            .selected_text(self.target_chip_name.to_string())
                             .show_ui(ui, |ui| {
                                 for t in h.chips_list.iter() {
-                                    if self.filter_s.len() > 0 {
-                                        if let Some(_) = t.find(&self.filter_s) {
+                                    if !self.filter_s.is_empty() {
+                                        if t.contains(&self.filter_s) {
                                             ui.selectable_value(
                                                 &mut self.target_chip_name,
                                                 t.to_string(),
@@ -193,7 +193,7 @@ pub mod m_flash_opts {
                 if ui.button("try to download").clicked() {
                     if let Some(h) = self.probe_rs_handler.borrow_mut() {
                         if self.probe_selected_idx < h.probes_list.len() {
-                            if let Some(_) = h.session.borrow() {
+                            if h.session.borrow().is_some() {
                                 let rst = h.try_to_download(
                                     &self.selected_file.clone().unwrap_or_default(),
                                     self.file_format_selected.clone(),

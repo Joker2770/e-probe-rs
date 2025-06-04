@@ -1,6 +1,6 @@
 /*
  *  Simple GUI for probe-rs with egui framework.
- *  Copyright (C) 2024 Joker2770
+ *  Copyright (C) 2024-2025 Joker2770
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
  */
 
 pub mod probe_rs_integration {
+    use crate::configuration::m_config;
     use probe_rs::{
         config, flashing,
         probe::{list, DebugProbeInfo},
@@ -32,7 +33,7 @@ pub mod probe_rs_integration {
     };
 
     fn get_rtt_symbol<T: io::Read + io::Seek>(file: &mut T) -> Option<u64> {
-        get_symbol(file, "_SEGGER_RTT")
+        get_symbol(file, m_config::RTT_SYMBOL)
     }
 
     fn get_symbol<T: io::Read + io::Seek>(file: &mut T, symbol: &str) -> Option<u64> {
@@ -75,12 +76,10 @@ pub mod probe_rs_integration {
             probe_idx: usize,
             target_chip: &str,
         ) -> Result<&Option<Session>, Box<dyn Error>> {
-            if let None = self.session {
-                if probe_idx < self.probes_list.len() {
-                    let p = self.probes_list[probe_idx].open()?;
-                    let s = p.attach(target_chip, Permissions::default())?;
-                    self.session = Some(s);
-                }
+            if self.session.is_none() && probe_idx < self.probes_list.len() {
+                let p = self.probes_list[probe_idx].open()?;
+                let s = p.attach(target_chip, Permissions::default())?;
+                self.session = Some(s);
             }
             Ok(&self.session)
         }
@@ -90,12 +89,10 @@ pub mod probe_rs_integration {
             probe_idx: usize,
             target_chip: &str,
         ) -> Result<&Option<Session>, Box<dyn Error>> {
-            if let None = self.session {
-                if probe_idx < self.probes_list.len() {
-                    let p = self.probes_list[probe_idx].open()?;
-                    let s = p.attach_under_reset(target_chip, Permissions::default())?;
-                    self.session = Some(s);
-                }
+            if self.session.is_none() && probe_idx < self.probes_list.len() {
+                let p = self.probes_list[probe_idx].open()?;
+                let s = p.attach_under_reset(target_chip, Permissions::default())?;
+                self.session = Some(s);
             }
             Ok(&self.session)
         }
@@ -122,7 +119,7 @@ pub mod probe_rs_integration {
         }
 
         pub fn get_availabe_chips(&mut self) -> &Vec<String> {
-            if 0 >= self.chips_list.len() {
+            if self.chips_list.is_empty() {
                 for family in config::families() {
                     for variant in family.variants() {
                         let v = variant.name.clone();
@@ -177,14 +174,13 @@ pub mod probe_rs_integration {
             let mut scan_region = ScanRegion::Ram;
             if let Some(user_provided_addr) = control_block_address {
                 scan_region = ScanRegion::Exact(user_provided_addr);
-            } else {
-                if let Some(elf_file) = elf_file.as_ref() {
-                    let mut file = fs::File::open(elf_file).expect("open elf file");
-                    if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
-                        scan_region = ScanRegion::Exact(rtt_addr as _);
-                    }
+            } else if let Some(elf_file) = elf_file.as_ref() {
+                let mut file = fs::File::open(elf_file).expect("open elf file");
+                if let Some(rtt_addr) = get_rtt_symbol(&mut file) {
+                    scan_region = ScanRegion::Exact(rtt_addr as _);
                 }
             }
+
             self.scan_region = Some(scan_region);
 
             Ok(&self.scan_region)
@@ -215,7 +211,7 @@ pub mod probe_rs_integration {
             core_idx: usize,
             timeout: Duration,
         ) -> Result<&Option<Rtt>, Box<dyn Error>> {
-            let timeout: Duration = timeout.into();
+            let timeout: Duration = timeout;
             let start = Instant::now();
             if let Some(s) = self.session.borrow_mut() {
                 if core_idx < self.target_cores_num {

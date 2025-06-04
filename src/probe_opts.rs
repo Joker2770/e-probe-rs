@@ -20,7 +20,7 @@ pub mod m_probe_opts {
     #[derive(Clone, Copy, Debug, PartialEq)]
     pub enum ProbeOperations {
         FlashProgram,
-        RTTIO,
+        RttIO,
     }
 
     impl Default for ProbeOperations {

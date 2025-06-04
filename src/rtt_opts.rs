@@ -1,6 +1,6 @@
 /*
  *  Simple GUI for probe-rs with egui framework.
- *  Copyright (C) 2024 Joker2770
+ *  Copyright (C) 2024-2025 Joker2770
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ pub mod m_rtt_opts {
     };
 
     #[derive(Default)]
-    pub struct RTTIO {
+    pub struct Rttio {
         probe_selected_idx: usize,
         probe_rs_handler: Option<ProbeRsHandler>,
         target_chip_name: String,
@@ -46,13 +46,13 @@ pub mod m_rtt_opts {
         filter_s: String,
     }
 
-    impl RTTIO {
+    impl Rttio {
         pub fn ui(&mut self, ctx: &eframe::egui::Context, ui: &mut eframe::egui::Ui) {
-            if let None = self.probe_rs_handler.borrow_mut() {
+            if self.probe_rs_handler.borrow_mut().is_none() {
                 self.probe_rs_handler = Some(ProbeRsHandler::default());
             }
             if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                if 0 >= h.probes_list.len() {
+                if h.probes_list.is_empty() {
                     h.get_probes_list();
                 }
             }
@@ -83,7 +83,7 @@ pub mod m_rtt_opts {
                 }
             });
             if let Some(h) = self.probe_rs_handler.borrow_mut() {
-                if 0 >= h.chips_list.len() {
+                if h.chips_list.is_empty() {
                     h.get_availabe_chips();
                 }
             }
@@ -91,11 +91,11 @@ pub mod m_rtt_opts {
             ui.horizontal(|ui| {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
                     eframe::egui::ComboBox::from_label("target")
-                        .selected_text(format!("{}", self.target_chip_name))
+                        .selected_text(self.target_chip_name.to_string())
                         .show_ui(ui, |ui| {
                             for t in h.chips_list.iter() {
-                                if self.filter_s.len() > 0 {
-                                    if let Some(_) = t.find(&self.filter_s) {
+                                if !self.filter_s.is_empty() {
+                                    if t.contains(&self.filter_s) {
                                         ui.selectable_value(
                                             &mut self.target_chip_name,
                                             t.to_string(),
@@ -129,19 +129,14 @@ pub mod m_rtt_opts {
                         );
                         h.get_core_num();
                     }
-                    if ui.button("reset all").clicked() {
-                        match h.reset_all_cores() {
-                            Ok(_) => {
-                                self.cur_target_core_idx = 0;
-                                self.cur_target_channel_idx = 0;
-                                self.b_try_to_read = false;
-                                self.target_chip_name = "".to_owned();
-                                self.b_get_scan_region = false;
-                                self.selected_file = None;
-                                self.probe_rs_handler = None;
-                            }
-                            Err(_) => {}
-                        }
+                    if ui.button("reset all").clicked() && h.reset_all_cores().is_ok() {
+                        self.cur_target_core_idx = 0;
+                        self.cur_target_channel_idx = 0;
+                        self.b_try_to_read = false;
+                        self.target_chip_name = "".to_owned();
+                        self.b_get_scan_region = false;
+                        self.selected_file = None;
+                        self.probe_rs_handler = None;
                     }
                 }
             });
@@ -204,11 +199,8 @@ pub mod m_rtt_opts {
                             match h.get_scan_region(self.selected_file.borrow(), None) {
                                 Ok(_) => {
                                     if let Some(sr) = h.scan_region.borrow() {
-                                        match sr {
-                                            ScanRegion::Exact(_) => {
-                                                self.b_get_scan_region = true;
-                                            }
-                                            _ => {}
+                                        if let ScanRegion::Exact(_) = sr {
+                                            self.b_get_scan_region = true;
                                         }
                                     }
                                 }
@@ -277,9 +269,7 @@ pub mod m_rtt_opts {
 
             if self.log_buf.len() >= self.n_display_row {
                 self.log_buf.pop_front();
-            } else {
             }
-
             let mut buf = [0u8; 128];
             if self.b_try_to_read {
                 if let Some(h) = self.probe_rs_handler.borrow_mut() {
