@@ -8,7 +8,7 @@ chrono = "0.4.41"
 eframe = "0.31.1"
 egui_file = "0.22.1"
 goblin = "0.10.0"
-probe-rs = "0.27.0"
+probe-rs = "0.29.1"
 
 [profile.dev]
 codegen-units = 1   # better optimizations

@@ -120,7 +120,8 @@ pub mod probe_rs_integration {
 
         pub fn get_availabe_chips(&mut self) -> &Vec<String> {
             if self.chips_list.is_empty() {
-                for family in config::families() {
+                let registry = config::Registry::from_builtin_families();
+                for family in registry.families() {
                     for variant in family.variants() {
                         let v = variant.name.clone();
                         self.chips_list.push(v);

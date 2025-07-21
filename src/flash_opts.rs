@@ -176,17 +176,17 @@ pub mod m_flash_opts {
                     .show_ui(ui, |ui| {
                         ui.selectable_value(
                             &mut self.file_format_selected,
-                            flashing::Format::Elf,
+                            flashing::FormatKind::Elf.into(),
                             "elf",
                         );
                         ui.selectable_value(
                             &mut self.file_format_selected,
-                            flashing::Format::Hex,
+                            flashing::FormatKind::Hex.into(),
                             "hex",
                         );
                         ui.selectable_value(
                             &mut self.file_format_selected,
-                            flashing::Format::Uf2,
+                            flashing::FormatKind::Uf2.into(),
                             "uf2",
                         );
                     });
