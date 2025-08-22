@@ -139,7 +139,7 @@ pub mod probe_rs_integration {
         }
 
         #[allow(dead_code)]
-        pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core>, Box<dyn Error>> {
+        pub fn get_core(&mut self, core_idx: usize) -> Result<Option<Core<'_>>, Box<dyn Error>> {
             let mut opt_core = None;
             if let Some(s) = self.session.borrow_mut() {
                 if core_idx < self.target_cores_num {
